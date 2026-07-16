@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+
+# Keys / certs / licenses
+license.json
+*.pem
+!config/license/public.pem
+*.key
+*.p12
+*.pfx
+
+# Build / runtime
+tmp/
+*.exe
+*.log
+logs/
+backups/
+
+# Dependencies / cache
+node_modules/
+
+# OS / IDE (opcional)
+.DS_Store
+Thumbs.db
+.vscode/launch.json

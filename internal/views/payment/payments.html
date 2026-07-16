@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pagos de Empresa</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "payments-content" .}}
+  </main>
+
+</div>
+</body>
+</html>
+
+{{define "payments-content"}}
+
+    <div class="page-header">
+      <h1>Pagos de Constructora Norte S.A.</h1>
+      <p>Resumen mensual de pagos y aportes</p>
+    </div>
+
+    <div class="year-filter">
+      <label>Año</label>
+      <select id="year-select">
+        <option value="2024" selected>2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+      </select>
+    </div>
+
+    <section class="stats-grid">
+
+      <div class="card stat-card">
+        <div class="stat-icon green">
+          <i data-lucide="check"></i>
+        </div>
+        <div class="stat-content">
+          <span>Completados</span>
+          <h2>3</h2>
+          <div class="positive">$ 3.750.000</div>
+        </div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-icon orange">
+          <i data-lucide="credit-card"></i>
+        </div>
+        <div class="stat-content">
+          <span>En plan de pago</span>
+          <h2>4</h2>
+          <div style="color:#d97706;">$ 5.000.000</div>
+        </div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#fee2e2;color:#dc2626;">
+          <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-content">
+          <span>Vencidos</span>
+          <h2>2</h2>
+          <div class="negative">$ 2.500.000</div>
+        </div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#f1f5f9;color:#64748b;">
+          <i data-lucide="clock"></i>
+        </div>
+        <div class="stat-content">
+          <span>Pendientes</span>
+          <h2>3</h2>
+          <div style="color:#64748b;">$ 3.750.000</div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="payments-grid">
+
+      <div class="monthly-card yellow-bg" onclick="goToPaymentDetail('enero')">
+        <h3>Enero</h3>
+        <div class="monthly-status">
+          <div class="status-icon yellow">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text yellow">En plan de pago</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/01/2024</p>
+      </div>
+
+      <div class="monthly-card yellow-bg" onclick="goToPaymentDetail('febrero')">
+        <h3>Febrero</h3>
+        <div class="monthly-status">
+          <div class="status-icon yellow">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text yellow">En plan de pago</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/02/2024</p>
+      </div>
+
+      <div class="monthly-card yellow-bg" onclick="goToPaymentDetail('marzo')">
+        <h3>Marzo</h3>
+        <div class="monthly-status">
+          <div class="status-icon yellow">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text yellow">En plan de pago</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/03/2024</p>
+      </div>
+
+      <div class="monthly-card yellow-bg" onclick="goToPaymentDetail('abril')">
+        <h3>Abril</h3>
+        <div class="monthly-status">
+          <div class="status-icon yellow">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text yellow">En plan de pago</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/04/2024</p>
+      </div>
+
+      <div class="monthly-card green-bg" onclick="goToPaymentDetail('mayo')">
+        <h3>Mayo</h3>
+        <div class="monthly-status">
+          <div class="status-icon green">
+            <i data-lucide="check"></i>
+          </div>
+          <span class="status-text green">Pagado</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/05/2024</p>
+      </div>
+
+      <div class="monthly-card green-bg" onclick="goToPaymentDetail('junio')">
+        <h3>Junio</h3>
+        <div class="monthly-status">
+          <div class="status-icon green">
+            <i data-lucide="check"></i>
+          </div>
+          <span class="status-text green">Pagado</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">17/06/2024</p>
+      </div>
+
+      <div class="monthly-card green-bg" onclick="goToPaymentDetail('julio')">
+        <h3>Julio</h3>
+        <div class="monthly-status">
+          <div class="status-icon green">
+            <i data-lucide="check"></i>
+          </div>
+          <span class="status-text green">Pagado</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">15/07/2024</p>
+      </div>
+
+      <div class="monthly-card red-bg" onclick="goToPaymentDetail('agosto')">
+        <h3>Agosto</h3>
+        <div class="monthly-status">
+          <div class="status-icon red">
+            <i data-lucide="alert-circle"></i>
+          </div>
+          <span class="status-text red">Vencido</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date" style="color:#dc2626;">Venció hace 12 días</p>
+      </div>
+
+      <div class="monthly-card red-bg" onclick="goToPaymentDetail('septiembre')">
+        <h3>Septiembre</h3>
+        <div class="monthly-status">
+          <div class="status-icon red">
+            <i data-lucide="alert-circle"></i>
+          </div>
+          <span class="status-text red">Vencido</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date" style="color:#dc2626;">Venció hace 5 días</p>
+      </div>
+
+      <div class="monthly-card gray-bg" onclick="goToPaymentDetail('octubre')">
+        <h3>Octubre</h3>
+        <div class="monthly-status">
+          <div class="status-icon gray">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text gray">Pendiente</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">Vence el 15/10/2024</p>
+      </div>
+
+      <div class="monthly-card gray-bg" onclick="goToPaymentDetail('noviembre')">
+        <h3>Noviembre</h3>
+        <div class="monthly-status">
+          <div class="status-icon gray">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text gray">Pendiente</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">Vence el 15/11/2024</p>
+      </div>
+
+      <div class="monthly-card gray-bg" onclick="goToPaymentDetail('diciembre')">
+        <h3>Diciembre</h3>
+        <div class="monthly-status">
+          <div class="status-icon gray">
+            <i data-lucide="clock"></i>
+          </div>
+          <span class="status-text gray">Pendiente</span>
+        </div>
+        <p class="monthly-amount">$ 1.250.000</p>
+        <p class="monthly-date">Vence el 15/12/2024</p>
+      </div>
+
+    </section>
+
+    <div class="card">
+      <div class="plan-card">
+        <div class="plan-section">
+          <div class="plan-icon-wrap">
+            <i data-lucide="file-text"></i>
+          </div>
+        </div>
+        <div class="plan-section">
+          <span class="plan-label">Plan de pago</span>
+          <span class="plan-value">La empresa posee un plan de regularización activo.</span>
+        </div>
+        <div class="plan-section">
+          <span class="plan-label">Estado</span>
+          <span class="plan-badge">Activo</span>
+        </div>
+        <div class="plan-section">
+          <span class="plan-label">Cuotas restantes</span>
+          <span class="plan-value">6 de 12</span>
+        </div>
+        <div class="plan-section">
+          <span class="plan-label">Próximo vencimiento</span>
+          <span class="plan-value">15/08/2024</span>
+        </div>
+        <button class="plan-btn" onclick="goToPaymentPlan()">Ver plan de pago</button>
+      </div>
+    </div>
+
+<script>
+  lucide.createIcons();
+
+  function goToPaymentDetail(month) {
+    window.location.href = '../payment/payment.html?month=' + encodeURIComponent(month);
+  }
+
+  function goToPaymentPlan() {
+    window.location.href = '../paymentPlan/createPaymentPlan.html';
+  }
+
+  document.getElementById('year-select').addEventListener('change', function() {
+    console.log('Year changed to:', this.value);
+  });
+
+  var dropdown = document.getElementById('profile-dropdown');
+  var menu = document.getElementById('dropdown-menu');
+
+  if (dropdown && menu) {
+    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function() {
+      menu.classList.remove('show');
+    });
+  }
+</script>
+
+{{end}}

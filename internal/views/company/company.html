@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ficha de Empresa</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "company-content" .}}
+  </main>
+
+</div>
+</body>
+</html>
+
+{{define "company-content"}}
+
+    <div class="page-header affiliate-header">
+      <div>
+        <h1>Ficha de Empresa</h1>
+        <p>Visualización completa de datos de la empresa</p>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="btn-edit">
+          <i data-lucide="pencil"></i>
+          Editar
+        </button>
+
+        <button class="btn btn-primary" id="btn-save">
+          <i data-lucide="save"></i>
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+
+    <div class="affiliate-grid">
+
+      <!-- LEFT COLUMN -->
+
+      <div class="affiliate-main">
+
+        <!-- DATOS DE LA EMPRESA -->
+
+        <div class="card affiliate-card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="building-2"></i>
+              <h3>Datos de la Empresa</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" name="name" value="{{.Company.Name}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>N° de empresa</label>
+                <input type="text" name="company-number" value="{{.Company.CompanyNumber}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>CUIT</label>
+                <input type="text" name="cuit" value="{{.Company.Cuit}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Localidad</label>
+                <input type="text" name="district" value="{{.Company.District}}" readonly />
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Dirección</label>
+                <input type="text" name="address" value="{{.Company.Address}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Código postal</label>
+                <input type="text" name="postal-code" value="{{.Company.PostalCode}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" name="phone" value="{{.Company.Phone}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Contacto</label>
+                <input type="text" name="contact" value="{{.Company.Contact}}" readonly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OBSERVACIONES -->
+
+        <div class="card affiliate-card collapsed">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="file-text"></i>
+              <h3>Observaciones</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Notas adicionales</label>
+                <textarea name="observations" readonly rows="4">{{.Company.Observations}}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SIDEBAR -->
+
+      <aside class="affiliate-sidebar">
+
+        <!-- COMPANY PROFILE CARD -->
+
+        <div class="card profile-card">
+          <div class="profile-avatar">
+            <i data-lucide="building-2"></i>
+          </div>
+          <h3>{{.Company.Name}}</h3>
+          <div class="profile-meta">
+            <span>N° de empresa</span>
+            <strong>{{.Company.CompanyNumber}}</strong>
+          </div>
+          <div class="status-divider"></div>
+        </div>
+
+        <!-- GESTIÓN -->
+
+        <div class="card">
+          <h3>Gestión</h3>
+          <div class="action-item" style="cursor:pointer;"
+               hx-get="/members?show-active=true&company-id={{.Company.ID}}"
+               hx-target="#main-content"
+               hx-push-url="true">
+            <i data-lucide="users"></i>
+            Ver afiliados
+            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
+          </div>
+        </div>
+
+        <!-- ACCIONES -->
+
+        <div class="card">
+          <h3>Acciones</h3>
+          <button class="action-btn red"
+                  hx-delete="/companies/{{.Company.ID}}"
+                  hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                  hx-target="#main-content"
+                  hx-push-url="/companies">
+            <i data-lucide="trash-2"></i>
+            Eliminar empresa
+          </button>
+        </div>
+
+      </aside>
+
+    </div>
+
+<script>
+  lucide.createIcons();
+
+  // Collapse toggle
+  document.querySelectorAll('.card-title').forEach(function(title) {
+    title.addEventListener('click', function() {
+      this.closest('.affiliate-card').classList.toggle('collapsed');
+    });
+  });
+
+  // Edit/Save functionality
+  var isEditing = false;
+  var formInputs = document.querySelectorAll('.affiliate-main input, .affiliate-main select, .affiliate-main textarea');
+  var btnEdit = document.getElementById('btn-edit');
+  var btnSave = document.getElementById('btn-save');
+
+  btnEdit.addEventListener('click', function() {
+    isEditing = !isEditing;
+    if (isEditing) {
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') { input.disabled = false; }
+        else { input.removeAttribute('readonly'); }
+        input.classList.add('editable');
+      });
+      btnEdit.innerHTML = '<i data-lucide="x"></i> Cancelar';
+      btnSave.style.display = 'flex';
+    } else {
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') { input.disabled = true; }
+        else { input.setAttribute('readonly', 'readonly'); }
+        input.classList.remove('editable');
+      });
+      btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
+      btnSave.style.display = 'none';
+    }
+    lucide.createIcons();
+  });
+
+  btnSave.addEventListener('click', function() {
+    formInputs.forEach(function(input) {
+      if (input.tagName === 'SELECT') { input.disabled = true; }
+      else { input.setAttribute('readonly', 'readonly'); }
+      input.classList.remove('editable');
+    });
+    isEditing = false;
+    btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
+    btnSave.style.display = 'none';
+  });
+
+  btnSave.style.display = 'none';
+</script>
+
+{{end}}

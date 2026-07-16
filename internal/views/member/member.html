@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalle del Afiliado</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "member-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  document.querySelectorAll('.card-title').forEach(function(title) {
+    title.addEventListener('click', function() {
+      this.closest('.affiliate-card').classList.toggle('collapsed');
+    });
+  });
+
+  var isEditing = false;
+  var formInputs = document.querySelectorAll('.affiliate-main input, .affiliate-main select, .affiliate-main textarea');
+  var btnEdit = document.getElementById('btn-edit');
+  var btnSave = document.getElementById('btn-save');
+
+  if (btnEdit) {
+    btnEdit.addEventListener('click', function() {
+      isEditing = !isEditing;
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') {
+          input.disabled = !isEditing;
+        } else if (isEditing) {
+          input.removeAttribute('readonly');
+        } else {
+          input.setAttribute('readonly', 'readonly');
+        }
+        input.classList.toggle('editable', isEditing);
+      });
+      btnEdit.innerHTML = isEditing ? '<i data-lucide="x"></i> Cancelar' : '<i data-lucide="pencil"></i> Editar';
+      if (btnSave) btnSave.style.display = isEditing ? 'flex' : 'none';
+      lucide.createIcons();
+    });
+  }
+
+  if (btnSave) {
+    btnSave.style.display = 'none';
+    btnSave.addEventListener('click', function() {
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') { input.disabled = true; }
+        else { input.setAttribute('readonly', 'readonly'); }
+        input.classList.remove('editable');
+      });
+      isEditing = false;
+      if (btnEdit) btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
+      btnSave.style.display = 'none';
+    });
+  }
+
+  var dropdown = document.getElementById('profile-dropdown');
+  var menu = document.getElementById('dropdown-menu');
+  if (dropdown && menu) {
+    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+    document.addEventListener('click', function() { menu.classList.remove('show'); });
+  }
+</script>
+
+</body>
+</html>
+
+{{define "member-content"}}
+
+    <div class="page-header affiliate-header">
+      <div>
+        <h1>Detalle del Afiliado</h1>
+        <p>Vista completa de los datos del afiliado</p>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="btn-edit">
+          <i data-lucide="pencil"></i>
+          Editar
+        </button>
+
+        <button class="btn btn-primary" id="btn-save">
+          <i data-lucide="save"></i>
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+
+    <div class="affiliate-grid">
+
+      <!-- LEFT COLUMN -->
+
+      <div class="affiliate-main">
+
+        <!-- DATOS PERSONALES -->
+
+        <div class="card affiliate-card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="user"></i>
+              <h3>Datos Personales</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" name="name" value="{{.Member.Name}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Apellido</label>
+                <input type="text" name="last-name" value="{{.Member.LastName}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>DNI</label>
+                <input type="text" name="dni" value="{{.Member.Dni}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>CUIL</label>
+                <input type="text" name="cuil" value="{{.Member.Cuil}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="text" name="birthday" value="{{.Member.Birthday}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Género</label>
+                <select name="gender" disabled>
+                  <option value="Masculino" {{if eq .Member.Gender "Masculino"}}selected{{end}}>Masculino</option>
+                  <option value="Femenino" {{if eq .Member.Gender "Femenino"}}selected{{end}}>Femenino</option>
+                  <option value="No binario" {{if eq .Member.Gender "No binario"}}selected{{end}}>No binario</option>
+                  <option value="Masculino transgénero" {{if eq .Member.Gender "Masculino transgénero"}}selected{{end}}>Masculino transgénero</option>
+                  <option value="Femenino transgénero" {{if eq .Member.Gender "Femenino transgénero"}}selected{{end}}>Femenino transgénero</option>
+                  <option value="Otra identidad" {{if eq .Member.Gender "Otra identidad"}}selected{{end}}>Otra identidad</option>
+                  <option value="Sin especificar" {{if eq .Member.Gender "Sin especificar"}}selected{{end}}>Sin especificar</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Estado Civil</label>
+                <select name="marital-status" disabled>
+                  <option value="Soltero" {{if eq .Member.MaritalStatus "Soltero"}}selected{{end}}>Soltero</option>
+                  <option value="Casado" {{if eq .Member.MaritalStatus "Casado"}}selected{{end}}>Casado</option>
+                  <option value="Separado" {{if eq .Member.MaritalStatus "Separado"}}selected{{end}}>Separado</option>
+                  <option value="Divorciado" {{if eq .Member.MaritalStatus "Divorciado"}}selected{{end}}>Divorciado</option>
+                  <option value="Viudo" {{if eq .Member.MaritalStatus "Viudo"}}selected{{end}}>Viudo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" name="phone" value="{{.Member.Phone}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" name="email" value="{{.Member.Email}}" readonly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DIRECCIÓN -->
+
+        <div class="card affiliate-card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="map-pin"></i>
+              <h3>Dirección</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Dirección</label>
+                <input type="text" name="address" value="{{.Member.Address}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Localidad</label>
+                <input type="text" name="district" value="{{.Member.District}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Código Postal</label>
+                <input type="text" name="postal-code" value="{{.Member.PostalCode}}" readonly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS SINDICALES -->
+
+        <div class="card affiliate-card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="briefcase"></i>
+              <h3>Datos Sindicales</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>N° Afiliado</label>
+                <input type="text" name="member-number" value="{{.Member.MemberNumber}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Fecha de Ingreso</label>
+                <input type="text" name="entry-date" value="{{.Member.EntryDate}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Empresa</label>
+                <input type="text" value="{{.Member.CompanyName}}" readonly />
+              </div>
+              <div class="form-group">
+                <label>Categoría</label>
+                <input type="text" name="category" value="{{.Member.Category}}" readonly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOTAS -->
+
+        <div class="card affiliate-card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <i data-lucide="file-text"></i>
+              <h3>Notas</h3>
+            </div>
+            <i data-lucide="chevron-down"></i>
+          </div>
+          <div class="card-content">
+            <div class="form-grid">
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Observaciones</label>
+                <textarea name="observations" readonly rows="4">{{.Member.Observations}}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SIDEBAR -->
+
+      <aside class="affiliate-sidebar">
+
+        <!-- PROFILE CARD -->
+
+        <div class="card profile-card">
+          <div class="profile-avatar">{{slice .Member.LastName 0 1}}{{slice .Member.Name 0 1}}</div>
+          <h3>{{.Member.LastName}}, {{.Member.Name}}</h3>
+          <div class="profile-meta">
+            <span>N° Afiliado</span>
+            <strong>{{.Member.MemberNumber}}</strong>
+          </div>
+          <div class="status-divider"></div>
+          <div class="profile-meta">
+            <span>Empresa</span>
+            <strong>
+              {{.Member.CompanyName}}
+              <button class="company-link table-btn blue" type="button"
+                      hx-get="/companies/{{.Member.CompanyID}}"
+                      hx-target="#main-content"
+                      hx-push-url="true"
+                      title="Ver empresa">
+                <i data-lucide="external-link"></i>
+              </button>
+            </strong>
+          </div>
+        </div>
+
+        <!-- GESTIÓN -->
+
+        <div class="card">
+          <h3>Gestión</h3>
+          <div class="action-item"
+               hx-get="/members/{{.Member.ID}}/parents"
+               hx-target="#main-content"
+               hx-push-url="true"
+               style="cursor:pointer;">
+            <i data-lucide="users"></i>
+            Ver familiares a cargo
+            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
+          </div>
+        </div>
+
+        <!-- ACCIONES -->
+
+        <div class="card">
+          <h3>Acciones</h3>
+          <button class="action-btn red"
+                  hx-delete="/members/{{.Member.ID}}"
+                  hx-confirm="¿Estás seguro de eliminar este afiliado?"
+                  hx-target="#main-content"
+                  hx-push-url="/members">
+            <i data-lucide="trash-2"></i>
+            Eliminar afiliado
+          </button>
+        </div>
+
+      </aside>
+
+    </div>
+
+{{end}}

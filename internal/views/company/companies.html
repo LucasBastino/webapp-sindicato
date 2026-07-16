@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Empresas del sistema</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "companies-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var btnAdd = document.getElementById('btn-add');
+    if (btnAdd) btnAdd.addEventListener('click', function() { window.location.href = '/companies/new'; });
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>
+
+{{define "companies-content"}}
+
+<script>
+  function syncStatusFilter(checkboxId, hiddenId) {
+    var checkbox = document.getElementById(checkboxId);
+    var hidden = document.getElementById(hiddenId);
+    if (checkbox && hidden) {
+      hidden.value = checkbox.checked ? 'true' : 'false';
+    }
+  }
+
+  function syncAllCompaniesFilters() {
+    syncStatusFilter('show-active-cb', 'show-active-hidden');
+    syncStatusFilter('show-deleted-cb', 'show-deleted-hidden');
+  }
+
+  function onStatusFilterChange(cbId, hiddenId, formId) {
+    syncAllCompaniesFilters();
+    htmx.trigger('#' + formId, 'filterApply');
+  }
+  lucide.createIcons();
+</script>
+
+    <div class="table-header">
+      <h1>Empresas del sistema</h1>
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" name="search-key" form="companies-filters"
+                 placeholder="Buscar empresas..." value="{{.PageContext.SearchKey}}">
+        </div>
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button">
+          <i data-lucide="plus"></i>
+          Agregar empresa
+        </button>
+      </div>
+    </div>
+
+    <form id="companies-filters" class="status-filters"
+          hx-get="/companies"
+          hx-target="#main-content"
+          hx-push-url="true"
+          hx-trigger="filterApply from:#companies-filters, keyup changed delay:400ms from:#search-input"
+          hx-on::before-request="syncAllCompaniesFilters()">
+      <input type="hidden" name="show-active" id="show-active-hidden"
+             value="{{if .PageContext.StatusFilters.ShowActive}}true{{else}}false{{end}}">
+      <input type="hidden" name="show-deleted" id="show-deleted-hidden"
+             value="{{if .PageContext.StatusFilters.ShowDeleted}}true{{else}}false{{end}}">
+
+      <label class="status-filter-item">
+        <input type="checkbox" id="show-active-cb"
+               {{if .PageContext.StatusFilters.ShowActive}}checked{{end}}
+               onchange="onStatusFilterChange('show-active-cb', 'show-active-hidden', 'companies-filters')">
+        Activas
+      </label>
+      <label class="status-filter-item">
+        <input type="checkbox" id="show-deleted-cb"
+               {{if .PageContext.StatusFilters.ShowDeleted}}checked{{end}}
+               onchange="onStatusFilterChange('show-deleted-cb', 'show-deleted-hidden', 'companies-filters')">
+        Eliminadas
+      </label>
+    </form>
+
+    <div class="card table-card">
+      {{if eq (len .Companies) 0}}
+        {{template "empty-state" .EmptyState}}
+      {{else}}
+      <div class="table-wrapper">
+        <table class="affiliate-table">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>N° Empresa</th>
+              <th>Dirección</th>
+              <th>Ficha</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="company-table-body">
+            {{range .Companies}}
+            <tr {{if .IsDeleted}}class="row-deleted"{{end}}>
+              <td class="col-name">{{.Name}}</td>
+              <td class="col-dni">{{.CompanyNumber}}</td>
+              <td class="col-company">{{.Address}}</td>
+              <td class="col-action">
+                <button class="table-btn blue" type="button"
+                        hx-get="/companies/{{.ID}}"
+                        hx-target="#main-content"
+                        hx-push-url="true"
+                        title="Ver ficha">
+                  <i data-lucide="file-text"></i>
+                </button>
+              </td>
+              <td class="col-action">
+                {{if .IsDeleted}}
+                <button class="table-btn green" type="button"
+                        hx-post="/companies/{{.ID}}/restore"
+                        hx-headers='{"view": "table"}'
+                        hx-include="#companies-filters, #search-input"
+                        hx-confirm="¿Estás seguro de restaurar esta empresa?"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Restaurar empresa">
+                  <i data-lucide="rotate-ccw"></i>
+                </button>
+                {{else}}
+                <button class="table-btn red" type="button"
+                        hx-delete="/companies/{{.ID}}/"
+                        hx-include="#companies-filters, #search-input"
+                        hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Eliminar empresa">
+                  <i data-lucide="trash-2"></i>
+                </button>
+                {{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{end}}
+    </div>
+
+    {{template "pagination" .PageContext}}
+
+{{end}}

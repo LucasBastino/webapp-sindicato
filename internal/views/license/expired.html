@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Licencia caducada</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+
+<div class="page-layout">
+
+  <aside class="page-brand" aria-label="Información de la organización">
+    <div class="brand-decor brand-decor-1"></div>
+    <div class="brand-decor brand-decor-2"></div>
+
+    <div class="brand-content">
+      <div class="brand-icon" aria-hidden="true">
+        <i data-lucide="shield-alert"></i>
+      </div>
+      <h1>Mi Organización</h1>
+      <p class="brand-subtitle">Gestión de Afiliados</p>
+      <p>Administrá afiliados, empresas y usuarios desde un único sistema.</p>
+    </div>
+  </aside>
+
+  <main class="page-main">
+    <div class="expired-card">
+      <div class="expired-icon-wrap" aria-hidden="true">
+        <i data-lucide="lock" width="28" height="28"></i>
+        <span class="clock-badge">
+          <i data-lucide="clock" width="14" height="14"></i>
+        </span>
+      </div>
+
+      <h2>Licencia de software caducada</h2>
+
+      <p class="expired-text">
+        La licencia de software ha expirado y el sistema ya no está disponible.
+      </p>
+      <p class="expired-text">
+        Por favor, verificá tu licencia para continuar utilizando el sistema.
+      </p>
+
+      <a href="/verifyLicense" class="btn-verify" id="btn-verify">Verificar licencia</a>
+    </div>
+
+    <p class="page-footer">Versión 1.0.0 · © Mi Organización</p>
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  document.getElementById('btn-verify').addEventListener('click', function(e) {
+    if (window.location.protocol !== 'file:') return;
+
+    e.preventDefault();
+    const btn = this;
+    btn.textContent = 'Verificando...';
+    btn.style.pointerEvents = 'none';
+
+    setTimeout(function () {
+      alert('Licencia verificada correctamente (vista previa)');
+      window.location.href = '/login';
+    }, 800);
+  });
+</script>
+
+</body>
+</html>

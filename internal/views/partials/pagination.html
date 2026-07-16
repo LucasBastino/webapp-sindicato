@@ -1,0 +1,139 @@
+{{define "pagination"}}
+{{$p := .Pagination}}
+{{$ctx := .}}
+
+{{if gt $p.TotalPages 1}}
+<nav class="pagination">
+
+  {{if le $p.TotalPages 10}}
+
+    {{/* ≤10 páginas: mostrar todas */}}
+    {{range $p.TotalPagesArray}}
+      {{if eq . $ctx.Pagination.CurrentPage}}
+        <button class="page-btn active" disabled>{{.}}</button>
+      {{else}}
+        <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery .}}" hx-target="#main-content" hx-push-url="true">{{.}}</a>
+      {{end}}
+    {{end}}
+
+  {{else}}
+
+    {{/* >10 páginas: ventana deslizante */}}
+
+    {{if eq $p.CurrentPage 1}}
+      {{/* Primera página */}}
+      <button class="page-btn" disabled><i data-lucide="chevrons-left"></i></button>
+      <button class="page-btn" disabled><i data-lucide="chevron-left"></i></button>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.FourAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FiveAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.FiveAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.SixAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.SixAfter}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{else if eq $p.CurrentPage 2}}
+      {{/* Segunda página */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.FourAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FiveAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.FiveAfter}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{else if eq $p.CurrentPage 3}}
+      {{/* Tercera página */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true">{{$p.PreviousPage}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.FourAfter}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{else if eq $p.TwoAfter $p.LastPage}}
+      {{/* Antepenúltima página */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FiveBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FiveBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FourBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoBefore}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{else if eq $p.NextPage $p.LastPage}}
+      {{/* Anteúltima página */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FiveBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FiveBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FourBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true">{{$p.PreviousPage}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{else if eq $p.CurrentPage $p.LastPage}}
+      {{/* Última página */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.SixBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.SixBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FiveBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FiveBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FourBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.FourBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true">{{$p.PreviousPage}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <button class="page-btn" disabled><i data-lucide="chevron-right"></i></button>
+      <button class="page-btn" disabled><i data-lucide="chevrons-right"></i></button>
+
+    {{else}}
+      {{/* Página del medio */}}
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-left"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.FirstPage}}" hx-target="#main-content" hx-push-url="true">{{$p.FirstPage}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoBefore}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoBefore}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.PreviousPage}}" hx-target="#main-content" hx-push-url="true">{{$p.PreviousPage}}</a>
+      <button class="page-btn active" disabled>{{$p.CurrentPage}}</button>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true">{{$p.NextPage}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.TwoAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.TwoAfter}}</a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.ThreeAfter}}" hx-target="#main-content" hx-push-url="true">{{$p.ThreeAfter}}</a>
+      <span class="page-btn page-ellipsis">...</span>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.NextPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevron-right"></i></a>
+      <a class="page-btn" hx-get="/{{$ctx.ActiveSection}}?{{$ctx.TableQuery $p.LastPage}}" hx-target="#main-content" hx-push-url="true"><i data-lucide="chevrons-right"></i></a>
+
+    {{end}}
+
+  {{end}}
+
+</nav>
+{{end}}
+{{end}}

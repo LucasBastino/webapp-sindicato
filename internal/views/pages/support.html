@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Centro de soporte</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="page-backdrop" aria-hidden="true">
+  {{template "sidebar" .PageContext}}
+  <main class="content" id="main-content">
+    {{template "support-content" .}}
+  </main>
+</div>
+
+</body>
+</html>
+
+{{define "support-content"}}
+<div class="backdrop-card"></div>
+
+<div class="support-overlay" id="support-overlay" role="presentation">
+  <div class="support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title">
+
+    <button type="button" class="support-close" onclick="closeModal()" aria-label="Cerrar">
+      <i data-lucide="x"></i>
+    </button>
+
+    <div class="support-icon" aria-hidden="true">
+      <i data-lucide="headphones"></i>
+    </div>
+
+    <h3 id="support-title">Centro de soporte</h3>
+    <p class="support-subtitle">
+      Estamos para ayudarte. Podés contactarnos por los siguientes canales.
+    </p>
+
+    <div class="support-grid">
+      <div class="support-card whatsapp">
+        <div class="card-icon" aria-hidden="true">
+          <i data-lucide="message-circle"></i>
+        </div>
+        <h4>WhatsApp</h4>
+        <p class="card-desc">Escribinos directamente por WhatsApp.</p>
+        <p class="contact-detail">+54 11 1234 5678</p>
+        <a href="https://wa.me/541112345678" class="support-btn whatsapp" target="_blank" rel="noopener noreferrer">
+          <i data-lucide="message-circle"></i>
+          Abrir chat
+        </a>
+      </div>
+
+      <div class="support-card email">
+        <div class="card-icon">
+          <span class="card-icon-wrap" aria-hidden="true">
+            <i data-lucide="mail"></i>
+          </span>
+        </div>
+        <h4>Email</h4>
+        <p class="card-desc">Envianos un correo y te responderemos a la brevedad.</p>
+        <p class="contact-detail">soporte@miorganizacion.com</p>
+        <a href="mailto:soporte@miorganizacion.com" class="support-btn email">
+          <i data-lucide="mail"></i>
+          Enviar email
+        </a>
+      </div>
+    </div>
+
+    <div class="hours-banner">
+      <span class="banner-icon" aria-hidden="true">
+        <i data-lucide="clock"></i>
+      </span>
+      <div>
+        <strong>Horario de atención</strong>
+        <span>Lunes a Viernes · 09:00 a 18:00</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function closeModal() {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/dashboard';
+    }
+  }
+
+  document.getElementById('support-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+</script>
+
+{{end}}

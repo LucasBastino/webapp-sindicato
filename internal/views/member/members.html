@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Afiliados del sistema</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "members-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var btnAdd = document.getElementById('btn-add');
+    if (btnAdd) btnAdd.addEventListener('click', function() { window.location.href = '/members/new'; });
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>
+
+{{define "members-content"}}
+
+<script>
+  function syncStatusFilter(checkboxId, hiddenId) {
+    var checkbox = document.getElementById(checkboxId);
+    var hidden = document.getElementById(hiddenId);
+    if (checkbox && hidden) {
+      hidden.value = checkbox.checked ? 'true' : 'false';
+    }
+  }
+
+  function syncAllMembersFilters() {
+    syncStatusFilter('show-active-cb', 'show-active-hidden');
+    syncStatusFilter('show-inactive-cb', 'show-inactive-hidden');
+    syncStatusFilter('show-deleted-cb', 'show-deleted-hidden');
+  }
+
+  function onStatusFilterChange(cbId, hiddenId, formId) {
+    syncAllMembersFilters();
+    htmx.trigger('#' + formId, 'filterApply');
+  }
+  lucide.createIcons();
+</script>
+
+    <div class="table-header">
+      <h1>Afiliados del sistema</h1>
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" name="search-key" form="members-filters"
+                 placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
+        </div>
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button">
+          <i data-lucide="plus"></i>
+          Agregar afiliado
+        </button>
+      </div>
+    </div>
+
+    <form id="members-filters" class="status-filters"
+          hx-get="/members"
+          hx-target="#main-content"
+          hx-push-url="true"
+          hx-trigger="filterApply from:#members-filters, keyup changed delay:400ms from:#search-input"
+          hx-on::before-request="syncAllMembersFilters()">
+      <input type="hidden" name="show-active" id="show-active-hidden"
+             value="{{if .PageContext.StatusFilters.ShowActive}}true{{else}}false{{end}}">
+      <input type="hidden" name="show-inactive" id="show-inactive-hidden"
+             value="{{if .PageContext.StatusFilters.ShowInactive}}true{{else}}false{{end}}">
+      <input type="hidden" name="show-deleted" id="show-deleted-hidden"
+             value="{{if .PageContext.StatusFilters.ShowDeleted}}true{{else}}false{{end}}">
+
+      <label class="status-filter-item">
+        <input type="checkbox" id="show-active-cb"
+               {{if .PageContext.StatusFilters.ShowActive}}checked{{end}}
+               onchange="onStatusFilterChange('show-active-cb', 'show-active-hidden', 'members-filters')">
+        Activos
+      </label>
+      <label class="status-filter-item">
+        <input type="checkbox" id="show-inactive-cb"
+               {{if .PageContext.StatusFilters.ShowInactive}}checked{{end}}
+               onchange="onStatusFilterChange('show-inactive-cb', 'show-inactive-hidden', 'members-filters')">
+        Inactivos
+      </label>
+      <label class="status-filter-item">
+        <input type="checkbox" id="show-deleted-cb"
+               {{if .PageContext.StatusFilters.ShowDeleted}}checked{{end}}
+               onchange="onStatusFilterChange('show-deleted-cb', 'show-deleted-hidden', 'members-filters')">
+        Eliminados
+      </label>
+    </form>
+
+    <div class="card table-card">
+      {{if eq (len .Members) 0}}
+        {{template "empty-state" .EmptyState}}
+      {{else}}
+      <div class="table-wrapper">
+        <table class="affiliate-table">
+          <thead>
+            <tr>
+              <th>Afiliado</th>
+              <th>DNI</th>
+              <th>Empresa</th>
+              <th>Ficha</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="affiliate-table-body">
+            {{range .Members}}
+            <tr {{if .IsDeleted}}class="row-deleted"{{else if .IsInactive}}class="row-inactive"{{end}}>
+              <td class="col-name">{{.LastName}}, {{.Name}}</td>
+              <td class="col-dni">{{.Dni}}</td>
+              <td class="col-company">{{.CompanyName}}</td>
+              <td class="col-action">
+                <button class="table-btn blue" type="button"
+                        hx-get="/members/{{.ID}}"
+                        hx-target="#main-content"
+                        hx-push-url="true"
+                        title="Ver ficha">
+                  <i data-lucide="file-text"></i>
+                </button>
+              </td>
+              <td class="col-action">
+                {{if .IsDeleted}}
+                <button class="table-btn green" type="button"
+                        hx-post="/members/{{.ID}}/restore"
+                        hx-headers='{"view": "table"}'
+                        hx-include="#members-filters, #search-input"
+                        hx-confirm="¿Estás seguro de restaurar este afiliado?"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Restaurar afiliado">
+                  <i data-lucide="rotate-ccw"></i>
+                </button>
+                {{else}}
+                <button class="table-btn red" type="button"
+                        hx-delete="/members/{{.ID}}"
+                        hx-include="#members-filters, #search-input"
+                        hx-confirm="¿Estás seguro de eliminar este afiliado?"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Eliminar afiliado">
+                  <i data-lucide="trash-2"></i>
+                </button>
+                {{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{end}}
+    </div>
+
+    {{template "pagination" .PageContext}}
+
+{{end}}

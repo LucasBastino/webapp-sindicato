@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registrar pago</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="modal-page modal-form-modal">
+
+<div class="modal-overlay" id="modal-overlay">
+
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <div class="modal-header">
+      <h3 id="modal-title">Registrar pago</h3>
+      <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <div class="modal-summary" id="modal-summary">
+      Cuota: Cuota 7 - $1.250.000 · <span class="status-red">Vencida</span>
+    </div>
+
+    <form class="modal-form" id="installment-form" onsubmit="handleSubmit(event)">
+
+      <div class="form-group">
+        <label>Monto a pagar <span class="required">*</span></label>
+        <div class="input-wrapper has-currency">
+          <span class="currency-prefix">$</span>
+          <input type="text" id="amount" value="$ 1.250.000" required>
+        </div>
+        <span class="helper-text">Debe pagarse el monto total de la cuota.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Fecha de pago <span class="required">*</span></label>
+        <div class="input-wrapper has-icon">
+          <span class="input-icon"><i data-lucide="calendar"></i></span>
+          <input type="text" id="payment-date" value="20/05/2024" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Referencia / comprobante <span class="required">*</span></label>
+        <div class="input-wrapper">
+          <input type="text" id="reference" placeholder="Nº de operación, comprobante, etc." required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Adjuntar comprobante <span class="required">*</span></label>
+        <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="Subir archivo">
+          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf" required aria-describedby="upload-formats">
+          <div class="upload-content">
+            <i data-lucide="upload-cloud"></i>
+            <span class="upload-main">Arrastrá y soltá tu archivo aquí</span>
+            <span class="upload-secondary">o hacé clic para seleccionar</span>
+            <span class="upload-formats" id="upload-formats">Formatos permitidos: JPG, PNG, PDF. Tamaño máx. 10MB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Observaciones (opcional)</label>
+        <div class="textarea-wrapper">
+          <textarea id="observations" maxlength="300" placeholder="Agregá observaciones sobre este pago..." oninput="updateCharCount()"></textarea>
+          <span class="char-counter" id="char-counter">0 / 300</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-submit">Guardar</button>
+
+    </form>
+
+    <div class="warning-row">
+      <i data-lucide="alert-circle"></i>
+      <span>Para cuotas vencidas es obligatorio adjuntar comprobante.</span>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function closeModal() {
+    window.location.href = '../paymentPlan/payment_plan.html';
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit');
+    btn.textContent = 'Guardando...';
+    btn.disabled = true;
+
+    setTimeout(function() {
+      alert('Pago de cuota registrado correctamente');
+      window.location.href = '../paymentPlan/payment_plan.html';
+    }, 800);
+  }
+
+  function updateCharCount() {
+    const textarea = document.getElementById('observations');
+    const counter = document.getElementById('char-counter');
+    counter.textContent = textarea.value.length + ' / 300';
+  }
+
+  var uploadZone = document.getElementById('upload-zone');
+  var fileInput = document.getElementById('file-input');
+
+  uploadZone.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  uploadZone.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+      var fileName = this.files[0].name;
+      var uploadContent = uploadZone.querySelector('.upload-content');
+      uploadContent.innerHTML = '<i data-lucide="file-check"></i><span class="upload-main">' + fileName + '</span><span class="upload-secondary">Archivo seleccionado - hacé clic para cambiar</span>';
+      lucide.createIcons();
+    }
+  });
+
+  uploadZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('drag-active');
+  });
+
+  uploadZone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-active');
+  });
+
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-active');
+
+    if (e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      var fileName = e.dataTransfer.files[0].name;
+      var uploadContent = uploadZone.querySelector('.upload-content');
+      uploadContent.innerHTML = '<i data-lucide="file-check"></i><span class="upload-main">' + fileName + '</span><span class="upload-secondary">Archivo seleccionado - hacé clic para cambiar</span>';
+      lucide.createIcons();
+    }
+  });
+
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+
+  var urlParams = new URLSearchParams(window.location.search);
+  var cuota = urlParams.get('cuota');
+  var amount = urlParams.get('amount');
+  var status = urlParams.get('status');
+
+  if (cuota) {
+    var summary = document.getElementById('modal-summary');
+    var amountText = amount || '$ 1.250.000';
+    var statusHtml = status === 'Vencida'
+      ? ' · <span class="status-red">Vencida</span>'
+      : (status ? ' · ' + status : ' · <span class="status-red">Vencida</span>');
+    summary.innerHTML = 'Cuota: Cuota ' + cuota + ' - ' + amountText + statusHtml;
+
+    if (amount) {
+      document.getElementById('amount').value = amount;
+    }
+  }
+</script>
+
+</body>
+</html>

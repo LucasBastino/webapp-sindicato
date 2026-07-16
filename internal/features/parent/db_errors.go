@@ -1,0 +1,17 @@
+package parent
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/go-sql-driver/mysql"
+)
+
+func mapDBDuplicateError(err error, errorMap map[string]string) {
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && (mysqlErr.Number == 1062) {
+		if strings.Contains(mysqlErr.Message, "unique_cuil") {
+			errorMap["cuil"] = "Número de CUIL ya registrado."
+		}
+	}
+}

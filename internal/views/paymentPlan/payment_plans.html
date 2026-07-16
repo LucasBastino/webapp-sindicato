@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planes de Pago</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "payment-plans-content" .}}
+  </main>
+
+</div>
+</body>
+</html>
+
+{{define "payment-plans-content"}}
+
+    <div class="table-header">
+      <h1>Planes de Pago</h1>
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" placeholder="Buscar planes...">
+        </div>
+        <button class="btn btn-primary btn-add-table" id="btn-add" onclick="createPlan()">
+          <i data-lucide="plus"></i>
+          Crear plan
+        </button>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-wrapper">
+        <table class="affiliate-table">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>Deuda original</th>
+              <th>Total plan</th>
+              <th>Cuotas</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="plans-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+
+<!-- DELETE MODAL -->
+
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <h3>Cancelar plan</h3>
+    <p>¿Estás seguro de cancelar este plan de pago? Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="modal-confirm">Cancelar plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  var plans = [
+    { id: 1, empresa: 'Constructora Norte S.A.', deuda: 15000000, total: 18000000, cuotas: 12, estado: 'Activo' },
+    { id: 2, empresa: 'Empresa del Sur S.A.', deuda: 8000000, total: 9200000, cuotas: 6, estado: 'Activo' },
+    { id: 3, empresa: 'Servicios Generales SRL', deuda: 5000000, total: 5500000, cuotas: 3, estado: 'Completado' },
+    { id: 4, empresa: 'Distribuidora Central', deuda: 12000000, total: 14400000, cuotas: 12, estado: 'Cancelado' }
+  ];
+
+  var currentPage = 1;
+  var itemsPerPage = 5;
+  var deleteTargetId = null;
+  var filteredPlans = plans.slice();
+
+  function renderTable() {
+    var tbody = document.getElementById('plans-table-body');
+    var start = (currentPage - 1) * itemsPerPage;
+    var end = start + itemsPerPage;
+    var pageData = filteredPlans.slice(start, end);
+
+    tbody.innerHTML = '';
+
+    if (pageData.length === 0) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="6" style="text-align:center;padding:40px;color:#64748b;">No se encontraron planes</td>';
+      tbody.appendChild(tr);
+      return;
+    }
+
+    pageData.forEach(function(plan) {
+      var estadoClass = plan.estado === 'Activo' ? 'active' : (plan.estado === 'Completado' ? 'active' : '');
+      var estadoStyle = plan.estado === 'Cancelado' ? 'background:#fee2e2;color:#dc2626;' : '';
+
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="col-name">' + plan.empresa + '</td>' +
+        '<td class="col-dni">$ ' + plan.deuda.toLocaleString('es-AR') + '</td>' +
+        '<td>$ ' + plan.total.toLocaleString('es-AR') + '</td>' +
+        '<td>' + plan.cuotas + ' cuotas</td>' +
+        '<td><span class="status ' + estadoClass + '" style="' + estadoStyle + '">' + plan.estado + '</span></td>' +
+        '<td class="col-action">' +
+          '<button class="table-btn blue" onclick="viewPlan(' + plan.id + ')" title="Ver plan">' +
+            '<i data-lucide="eye"></i>' +
+          '</button>' +
+          '<button class="table-btn red" onclick="showDeleteModal(' + plan.id + ')" title="Cancelar plan" style="margin-left:6px;">' +
+            '<i data-lucide="x"></i>' +
+          '</button>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+
+    lucide.createIcons();
+  }
+
+  function renderPagination() {
+    var pagination = document.getElementById('pagination');
+    var totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
+
+    pagination.innerHTML = '';
+
+    if (totalPages <= 1) {
+      return;
+    }
+
+    var firstBtn = document.createElement('button');
+    firstBtn.className = 'page-btn';
+    firstBtn.innerHTML = '<i data-lucide="chevrons-left"></i>';
+    firstBtn.onclick = function() { goToPage(1); };
+    firstBtn.disabled = currentPage === 1;
+    pagination.appendChild(firstBtn);
+
+    var prevBtn = document.createElement('button');
+    prevBtn.className = 'page-btn';
+    prevBtn.innerHTML = '<i data-lucide="chevron-left"></i>';
+    prevBtn.onclick = function() { goToPage(currentPage - 1); };
+    prevBtn.disabled = currentPage === 1;
+    pagination.appendChild(prevBtn);
+
+    var startPage = Math.max(1, currentPage - 2);
+    var endPage = Math.min(totalPages, currentPage + 2);
+
+    for (var i = startPage; i <= endPage; i++) {
+      var btn = document.createElement('button');
+      btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+      btn.innerHTML = i;
+      btn.onclick = function() { goToPage(parseInt(this.innerHTML)); };
+      pagination.appendChild(btn);
+    }
+
+    var nextBtn = document.createElement('button');
+    nextBtn.className = 'page-btn';
+    nextBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
+    nextBtn.onclick = function() { goToPage(currentPage + 1); };
+    nextBtn.disabled = currentPage === totalPages;
+    pagination.appendChild(nextBtn);
+
+    var lastBtn = document.createElement('button');
+    lastBtn.className = 'page-btn';
+    lastBtn.innerHTML = '<i data-lucide="chevrons-right"></i>';
+    lastBtn.onclick = function() { goToPage(totalPages); };
+    lastBtn.disabled = currentPage === totalPages;
+    pagination.appendChild(lastBtn);
+
+    lucide.createIcons();
+  }
+
+  function goToPage(page) {
+    var totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+    renderPagination();
+  }
+
+  function viewPlan(id) {
+    window.location.href = 'paymentPlan.html';
+  }
+
+  function showDeleteModal(id) {
+    deleteTargetId = id;
+    document.getElementById('modal-delete').classList.add('show');
+  }
+
+  function hideDeleteModal() {
+    deleteTargetId = null;
+    document.getElementById('modal-delete').classList.remove('show');
+  }
+
+  function confirmDelete() {
+    if (deleteTargetId === null) return;
+
+    var index = filteredPlans.findIndex(function(a) { return a.id === deleteTargetId; });
+    if (index > -1) {
+      filteredPlans[index].estado = 'Cancelado';
+    }
+
+    hideDeleteModal();
+    renderTable();
+  }
+
+  function createPlan() {
+    window.location.href = 'createPaymentPlan.html';
+  }
+
+  document.getElementById('search-input').addEventListener('keyup', function() {
+    var query = this.value.toLowerCase().trim();
+
+    if (query === '') {
+      filteredPlans = plans.slice();
+    } else {
+      filteredPlans = plans.filter(function(plan) {
+        return plan.empresa.toLowerCase().indexOf(query) > -1 ||
+               plan.estado.toLowerCase().indexOf(query) > -1;
+      });
+    }
+
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  });
+
+  document.getElementById('modal-cancel').addEventListener('click', hideDeleteModal);
+  document.getElementById('modal-confirm').addEventListener('click', confirmDelete);
+
+  document.getElementById('modal-delete').addEventListener('click', function(e) {
+    if (e.target === this) {
+      hideDeleteModal();
+    }
+  });
+
+  var dropdown = document.getElementById('profile-dropdown');
+  var menu = document.getElementById('dropdown-menu');
+
+  if (dropdown && menu) {
+    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function() {
+      menu.classList.remove('show');
+    });
+  }
+
+  renderTable();
+  renderPagination();
+</script>
+
+{{end}}

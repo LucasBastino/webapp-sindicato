@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ver familiar</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "parent-content" .}}
+  </main>
+
+</div>
+</body>
+</html>
+
+{{define "parent-content"}}
+
+    <div class="parent-page">
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="modal-icon">
+            <i data-lucide="users"></i>
+          </div>
+          <div class="modal-header-text">
+            <h2>Ver familiar</h2>
+          </div>
+          <button class="close-btn" id="btn-close" aria-label="Cerrar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="modal-form-grid">
+          <div class="modal-form-row">
+            <label for="nombres">Nombres</label>
+            <input type="text" id="nombres" value="María Pérez" readonly />
+          </div>
+
+          <div class="modal-form-row">
+            <label for="apellidos">Apellidos</label>
+            <input type="text" id="apellidos" value="Pérez" readonly />
+          </div>
+
+          <div class="modal-form-row">
+            <label for="parentesco">Parentesco</label>
+            <input type="text" id="parentesco" value="Esposa" readonly />
+          </div>
+
+          <div class="modal-form-row">
+            <label for="fecha-nacimiento">Fecha de nacimiento</label>
+            <input type="date" id="fecha-nacimiento" value="1986-04-12" readonly />
+          </div>
+
+          <div class="modal-form-row">
+            <label for="genero">Género</label>
+            <select id="genero" disabled>
+              <option selected>Femenino</option>
+              <option>Masculino</option>
+            </select>
+          </div>
+
+          <div class="modal-form-row">
+            <label for="cuil">CUIL</label>
+            <input type="text" id="cuil" value="27-23456789-0" readonly />
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div class="modal-meta">
+          <i data-lucide="clock"></i>
+          <span>Creado: 15/06/2024 &bull; Actualizado: 20/05/2025</span>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="btn-edit">
+            <i data-lucide="pencil"></i>
+            Editar
+          </button>
+          <button class="btn btn-primary" id="btn-save">
+            <i data-lucide="save"></i>
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+
+<script>
+  lucide.createIcons();
+
+  var isEditing = false;
+  var formInputs = document.querySelectorAll('.modal-form-grid input, .modal-form-grid select');
+  var btnEdit = document.getElementById('btn-edit');
+  var btnSave = document.getElementById('btn-save');
+  var btnClose = document.getElementById('btn-close');
+  var modalContainer = document.querySelector('.parent-page');
+
+  btnEdit.addEventListener('click', function() {
+    isEditing = !isEditing;
+
+    if (isEditing) {
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') {
+          input.disabled = false;
+        } else {
+          input.removeAttribute('readonly');
+        }
+        input.classList.add('editable');
+      });
+      btnEdit.innerHTML = '<i data-lucide="x"></i> Cancelar';
+      btnSave.style.display = 'flex';
+    } else {
+      formInputs.forEach(function(input) {
+        if (input.tagName === 'SELECT') {
+          input.disabled = true;
+        } else {
+          input.setAttribute('readonly', 'readonly');
+        }
+        input.classList.remove('editable');
+      });
+      btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
+      btnSave.style.display = 'none';
+    }
+
+    lucide.createIcons();
+  });
+
+  btnSave.addEventListener('click', function() {
+    formInputs.forEach(function(input) {
+      if (input.tagName === 'SELECT') {
+        input.disabled = true;
+      } else {
+        input.setAttribute('readonly', 'readonly');
+      }
+      input.classList.remove('editable');
+    });
+
+    isEditing = false;
+    btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
+    btnSave.style.display = 'none';
+    lucide.createIcons();
+  });
+
+  btnClose.addEventListener('click', function() {
+    modalContainer.style.display = 'none';
+  });
+
+  modalContainer.addEventListener('click', function(e) {
+    if (e.target === modalContainer) {
+      modalContainer.style.display = 'none';
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      modalContainer.style.display = 'none';
+    }
+  });
+
+  btnSave.style.display = 'none';
+
+  var dropdown = document.getElementById('profile-dropdown');
+  var menu = document.getElementById('dropdown-menu');
+
+  if (dropdown && menu) {
+    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function() {
+      menu.classList.remove('show');
+    });
+  }
+</script>
+
+{{end}}

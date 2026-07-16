@@ -1,0 +1,89 @@
+{{define "sidebar"}}
+<aside class="sidebar">
+
+  <div>
+
+    <div class="logo">
+      <h2>Mi Organización</h2>
+      <span>Gestión de Afiliados</span>
+    </div>
+
+    <nav>
+
+      <a href="/dashboard"
+         hx-get="/dashboard"
+         hx-target="#main-content"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         {{if eq .ActiveSection "dashboard"}}class="active"{{end}}>
+        <i data-lucide="layout-dashboard"></i>
+        Dashboard
+      </a>
+
+      <a href="/members"
+         hx-get="/members"
+         hx-target="#main-content"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         {{if eq .ActiveSection "members"}}class="active"{{end}}>
+        <i data-lucide="users"></i>
+        Afiliados
+      </a>
+
+      <a href="/companies"
+         hx-get="/companies"
+         hx-target="#main-content"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         {{if eq .ActiveSection "companies"}}class="active"{{end}}>
+        <i data-lucide="building-2"></i>
+        Empresas
+      </a>
+
+      <a href="#" {{if eq .ActiveSection "reports"}}class="active"{{end}}>
+        <i data-lucide="file-text"></i>
+        Reportes
+      </a>
+
+      {{if .UserAuthInfo.Admin}}
+      <a href="/user_panel"
+         hx-get="/user_panel"
+         hx-target="#main-content"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         {{if eq .ActiveSection "users"}}class="active"{{end}}>
+        <i data-lucide="user-cog"></i>
+        Usuarios
+      </a>
+      {{end}}
+
+    </nav>
+
+  </div>
+
+  <div class="sidebar-footer">
+
+    <div class="support">
+      <i data-lucide="circle-help"></i>
+      <span>Soporte</span>
+    </div>
+
+    <div class="profile-dropdown" id="profile-dropdown">
+      <div class="profile-trigger">
+        <div class="avatar">AD</div>
+        <div class="profile-info">
+          <strong>Admin</strong>
+          <span>admin@miorganizacion.com</span>
+        </div>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdown-menu">
+        <a href="#"><i data-lucide="user"></i> Mi perfil</a>
+        <a href="/login" class="danger"><i data-lucide="log-out"></i> Cerrar sesión</a>
+      </div>
+    </div>
+
+  </div>
+
+</aside>
+{{end}}

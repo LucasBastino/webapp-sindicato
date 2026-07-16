@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "dashboard-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  var dropdown = document.getElementById('profile-dropdown');
+  var menu = document.getElementById('dropdown-menu');
+
+  if (dropdown && menu) {
+    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function() {
+      menu.classList.remove('show');
+    });
+  }
+</script>
+
+</body>
+</html>
+
+{{define "dashboard-content"}}
+
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Bienvenido, Admin. Aquí tienes un resumen de tu organización.</p>
+    </div>
+
+    <!-- STATS -->
+
+    <section class="stats-grid">
+
+      <div class="card stat-card">
+
+        <div class="stat-icon blue">
+          <i data-lucide="users"></i>
+        </div>
+
+        <div class="stat-content">
+          <span>Afiliados totales</span>
+          <h2>1.248</h2>
+          <div class="positive">↑ 12% vs. mes anterior</div>
+        </div>
+
+      </div>
+
+      <div class="card stat-card">
+
+        <div class="stat-icon green">
+          <i data-lucide="building-2"></i>
+        </div>
+
+        <div class="stat-content">
+          <span>Empresas activas</span>
+          <h2>86</h2>
+          <div class="positive">↑ 5% vs. mes anterior</div>
+        </div>
+
+      </div>
+
+      <div class="card stat-card">
+
+        <div class="stat-icon purple">
+          <i data-lucide="user-plus"></i>
+        </div>
+
+        <div class="stat-content">
+          <span>Nuevos afiliados</span>
+          <h2>42</h2>
+          <div class="positive">↑ 18% vs. mes anterior</div>
+        </div>
+
+      </div>
+
+      <div class="card stat-card">
+
+        <div class="stat-icon orange">
+          <i data-lucide="user-minus"></i>
+        </div>
+
+        <div class="stat-content">
+          <span>Afiliados inactivos</span>
+          <h2>23</h2>
+          <div class="negative">↑ 8% vs. mes anterior</div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- MIDDLE -->
+
+    <section class="middle-grid">
+
+      <div class="card">
+
+        <div class="card-header">
+          <h3>Acciones rápidas</h3>
+        </div>
+
+        <div class="quick-grid">
+
+          <div class="quick-card">
+
+            <div class="quick-icon">
+              <i data-lucide="user-plus"></i>
+            </div>
+
+            <div class="quick-content">
+              <h4>Nuevo afiliado</h4>
+              <p>Registrar un nuevo afiliado</p>
+            </div>
+
+          </div>
+
+          <div class="quick-card">
+
+            <div class="quick-icon">
+              <i data-lucide="building-2"></i>
+            </div>
+
+            <div class="quick-content">
+              <h4>Nueva empresa</h4>
+              <p>Registrar una nueva empresa</p>
+            </div>
+
+          </div>
+
+          <div class="quick-card">
+
+            <div class="quick-icon">
+              <i data-lucide="file-text"></i>
+            </div>
+
+            <div class="quick-content">
+              <h4>Generar reporte</h4>
+              <p>Ver estadísticas y reportes</p>
+            </div>
+
+          </div>
+
+          <div class="quick-card">
+
+            <div class="quick-icon">
+              <i data-lucide="upload"></i>
+            </div>
+
+            <div class="quick-content">
+              <h4>Importar afiliados</h4>
+              <p>Importar desde archivo CSV</p>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- LAST AFFILIATES -->
+
+      <div class="card">
+
+        <div class="card-header">
+          <h3>Últimos afiliados</h3>
+          <a href="/members">Ver todos</a>
+        </div>
+
+        <div class="list">
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="user"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>Juan López</strong>
+              <span>Empresa del Sur S.A.</span>
+            </div>
+
+            <div class="list-date">
+              24/04/2024
+            </div>
+
+          </div>
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="user"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>María Rodríguez</strong>
+              <span>Constructora Norte</span>
+            </div>
+
+            <div class="list-date">
+              23/04/2024
+            </div>
+
+          </div>
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="user"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>Carlos Pérez</strong>
+              <span>Servicios Generales SRL</span>
+            </div>
+
+            <div class="list-date">
+              22/04/2024
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- BOTTOM -->
+
+    <section class="bottom-grid">
+
+      <div class="card graph-card">
+
+        <h3>Afiliados registrados (últimos 6 meses)</h3>
+
+        <div class="graph-placeholder"></div>
+
+      </div>
+
+      <div class="card">
+
+        <div class="card-header">
+          <h3>Empresas recientes</h3>
+          <a href="/companies">Ver todas</a>
+        </div>
+
+        <div class="list">
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="building-2"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>Empresa del Sur S.A.</strong>
+            </div>
+
+            <div class="list-right">
+              128 afiliados
+            </div>
+
+          </div>
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="building-2"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>Constructora Norte</strong>
+            </div>
+
+            <div class="list-right">
+              95 afiliados
+            </div>
+
+          </div>
+
+          <div class="list-item">
+
+            <div class="list-icon">
+              <i data-lucide="building-2"></i>
+            </div>
+
+            <div class="list-main">
+              <strong>Servicios Generales SRL</strong>
+            </div>
+
+            <div class="list-right">
+              76 afiliados
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+{{end}}

@@ -1,0 +1,68 @@
+package user
+
+func ToModel(req Request) User {
+	admin, roles := req.ToPermissions()
+
+	return User{
+		Username:      req.Username,
+		Admin:         admin,
+		ResourceRoles: roles,
+	}
+}
+
+func ToResponseFromRequest(req Request) Response {
+	admin, roles := req.ToPermissions()
+
+	return Response{
+		Username:      req.Username,
+		Password:      req.Password,
+		Admin:         admin,
+		ResourceRoles: roles,
+	}
+}
+
+func ToPasswordResponseFromRequest(req passwordRequest) passwordResponse {
+	return passwordResponse{
+		CurrentPassword: req.CurrentPassword,
+		Password:        req.Password,
+		ConfirmPassword: req.ConfirmPassword,
+	}
+}
+
+func ToPermissionsResponseFromRequest(req permissionsRequest) permissionsResponse {
+	admin, roles := req.ToPermissions()
+	return permissionsResponse{
+		Admin:         admin,
+		ResourceRoles: roles,
+	}
+}
+
+func ToTableResponse(u User) TableResponse {
+	return TableResponse{
+		Username:  u.Username,
+		Admin:     u.Admin,
+		CreatedAt: u.CreatedAt.Format("02/01/2006"),
+	}
+}
+
+func ToTableResponses(users []User) []TableResponse {
+	responses := make([]TableResponse, len(users))
+	for i, user := range users {
+		responses[i] = ToTableResponse(user)
+	}
+	return responses
+}
+
+func (req permissionsRequest) ToPermissions() (bool, map[string]any) {
+
+	admin := req.Admin == "on"
+
+	roles := map[string]any{
+		"member":  req.Member,
+		"company": req.Company,
+		"parent":  req.Parent,
+		"payment": req.Payment,
+	}
+
+	return admin, roles
+}

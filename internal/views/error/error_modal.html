@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Error</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="modal-page modal-error">
+
+<div class="modal-overlay" id="modal-overlay">
+
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="error-title" aria-describedby="error-description">
+
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
+      <i data-lucide="x"></i>
+    </button>
+
+    <div class="error-icon" aria-hidden="true">!</div>
+
+    <h3 id="error-title">No se pudo guardar</h3>
+
+    <p class="error-description" id="error-description">
+      Ocurrió un error al procesar la solicitud. Por favor, intentá nuevamente en unos segundos.
+    </p>
+
+    <div class="info-box">
+      <span class="info-icon" aria-hidden="true">
+        <i data-lucide="info"></i>
+      </span>
+      <p>
+        Si el problema persiste, contactá a soporte a través de la sección
+        <a href="#">Soporte</a>.
+      </p>
+    </div>
+
+    <button type="button" class="btn-close" onclick="closeModal()">Cerrar</button>
+
+  </div>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function closeModal() {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.style.display = 'none';
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+
+  var urlParams = new URLSearchParams(window.location.search);
+  var title = urlParams.get('title');
+  var message = urlParams.get('message');
+
+  if (title) {
+    document.getElementById('error-title').textContent = title;
+  }
+  if (message) {
+    document.getElementById('error-description').textContent = message;
+  }
+</script>
+
+</body>
+</html>

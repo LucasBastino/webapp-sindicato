@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Usuarios del sistema</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "users-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+
+  var users = [];
+  var currentPage = 1;
+  var itemsPerPage = 5;
+  var filteredUsers = users.slice();
+  var openMenuId = null;
+
+  function closeAllMenus() {
+    document.querySelectorAll('.actions-menu').forEach(function(menu) {
+      menu.classList.remove('show');
+    });
+    openMenuId = null;
+  }
+
+  function toggleActionsMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('menu-' + id);
+    if (openMenuId === id) { closeAllMenus(); return; }
+    closeAllMenus();
+    menu.classList.add('show');
+    openMenuId = id;
+    lucide.createIcons();
+  }
+
+  function buildActionsMenu(user) {
+    return (
+      '<div class="actions-dropdown" id="actions-' + user.id + '">' +
+        '<button type="button" class="actions-trigger" onclick="toggleActionsMenu(event, ' + user.id + ')">' +
+          'Acciones <i data-lucide="more-vertical"></i>' +
+        '</button>' +
+        '<div class="actions-menu" id="menu-' + user.id + '">' +
+          '<a href="/users/' + user.id + '/change-password"><i data-lucide="key-round"></i> Cambiar contraseña</a>' +
+          '<button type="button" class="danger" onclick="deactivateUser(' + user.id + ')"><i data-lucide="user-x"></i> Desactivar usuario</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderTable() {
+    var tbody = document.getElementById('users-table-body');
+    if (!tbody) return;
+    var start = (currentPage - 1) * itemsPerPage;
+    var pageData = filteredUsers.slice(start, start + itemsPerPage);
+    tbody.innerHTML = '';
+    closeAllMenus();
+
+    if (pageData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:#64748b;">No se encontraron usuarios</td></tr>';
+      return;
+    }
+
+    pageData.forEach(function(user) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' +
+          '<div class="user-cell">' +
+            '<span class="user-avatar">' + user.username.substring(0,2).toUpperCase() + '</span>' +
+            '<span class="user-name">' + user.username + '</span>' +
+          '</div>' +
+        '</td>' +
+        '<td>' + (user.admin ? 'Administrador' : 'Operador') + '</td>' +
+        '<td>' + user.createdAt + '</td>' +
+        '<td>' + buildActionsMenu(user) + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    lucide.createIcons();
+  }
+
+  function renderPagination() {
+    var pagination = document.getElementById('pagination');
+    if (!pagination) return;
+    var totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    pagination.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    var prev = document.createElement('button');
+    prev.className = 'page-btn';
+    prev.innerHTML = '<i data-lucide="chevron-left"></i>';
+    prev.disabled = currentPage === 1;
+    prev.onclick = function() { goToPage(currentPage - 1); };
+    pagination.appendChild(prev);
+
+    for (var i = 1; i <= totalPages; i++) {
+      var btn = document.createElement('button');
+      btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+      btn.textContent = i;
+      (function(p) { btn.onclick = function() { goToPage(p); }; })(i);
+      pagination.appendChild(btn);
+    }
+
+    var next = document.createElement('button');
+    next.className = 'page-btn';
+    next.innerHTML = '<i data-lucide="chevron-right"></i>';
+    next.disabled = currentPage === totalPages;
+    next.onclick = function() { goToPage(currentPage + 1); };
+    pagination.appendChild(next);
+
+    lucide.createIcons();
+  }
+
+  function goToPage(page) {
+    var totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+    renderPagination();
+  }
+
+  function deactivateUser(id) {
+    closeAllMenus();
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.addEventListener('keyup', function() {
+        var query = this.value.toLowerCase().trim();
+        filteredUsers = query === ''
+          ? users.slice()
+          : users.filter(function(u) { return u.username.toLowerCase().indexOf(query) > -1; });
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+      });
+    }
+
+    var btnAdd = document.getElementById('btn-add');
+    if (btnAdd) btnAdd.addEventListener('click', function() { window.location.href = '/users/new'; });
+
+    document.addEventListener('click', function() { closeAllMenus(); });
+
+    var dropdown = document.getElementById('profile-dropdown');
+    var menu = document.getElementById('dropdown-menu');
+    if (dropdown && menu) {
+      dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.classList.toggle('show');
+      });
+      document.addEventListener('click', function() { menu.classList.remove('show'); });
+    }
+
+    renderTable();
+    renderPagination();
+  });
+</script>
+
+</body>
+</html>
+
+{{define "users-content"}}
+
+    <div class="table-header">
+      <div class="table-header-left">
+        <h1>Usuarios del sistema</h1>
+        <p>Gestioná los usuarios, roles y permisos de acceso al sistema.</p>
+      </div>
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" placeholder="Buscar usuarios...">
+        </div>
+        <button class="btn btn-primary btn-add-table" id="btn-add">
+          <i data-lucide="plus"></i>
+          Agregar usuario
+        </button>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-wrapper">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Creado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+
+{{end}}

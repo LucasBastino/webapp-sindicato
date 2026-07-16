@@ -1,0 +1,117 @@
+package member
+
+import (
+	"context"
+	"errors"
+
+	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+)
+
+type MemberService struct {
+	repo *MemberRepository
+}
+
+func NewMemberService(repo *MemberRepository) *MemberService {
+	return &MemberService{
+		repo: repo,
+	}
+}
+
+func (s *MemberService) Get(ctx context.Context, id int) (*Member, error) {
+	member, err := s.repo.FindByID(ctx, id)
+	if err!=nil{
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+
+	if member == nil{
+		return nil, apperrors.NewNotFoundError(errors.New("member not found"), "")
+	}
+
+	return member, nil
+}
+
+func (s *MemberService) List(ctx context.Context, filters memberFilters, offset int) ([]Member, error) {
+	members, err := s.repo.Search(ctx, filters, offset)
+	if err!=nil{
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+
+	return members, nil
+}
+
+func (s *MemberService) GetElectoralList(ctx context.Context) ([]Member, error) {
+	members, err := s.repo.GetElectoralMemberList(ctx)
+	if err!=nil{
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+
+	return members, nil
+}
+
+func (s *MemberService) Count(ctx context.Context, filters memberFilters) (int, error) {
+	count, err := s.repo.Count(ctx, filters)
+	if err!=nil{
+		return 0, apperrors.NewDatabaseError(err, "")
+	}
+
+	return count, nil
+}
+
+
+func (s *MemberService) Create(ctx context.Context, member Member) (int, error) {
+	id, err := s.repo.Insert(ctx, member)
+	if err!=nil{
+		return 0, apperrors.NewDatabaseError(err, "")
+	}
+
+	return id, nil
+}
+
+// edita el afiliado
+// condicion: no puede ser editado si esta inactivo
+func (s *MemberService) Update(ctx context.Context, id int, member Member) error {
+	err := s.repo.Update(ctx, id, member)
+	if err!=nil{
+		return apperrors.NewDatabaseError(err, "")
+	}
+
+	return nil
+}
+
+func (s *MemberService) SoftDelete(ctx context.Context, id int) error {
+	rows, err := s.repo.SoftDelete(ctx, id)
+	if err!=nil{
+		return apperrors.NewDatabaseError(err, "")
+	}
+	if rows == 0 {
+		return apperrors.NewBusinessError(errors.New("failed to softdelete member: the entity is already softdeleted or doesn't exist"), "El afiliado ya se encuentra eliminado o no existe.")
+	}
+	return nil
+}
+
+func (s *MemberService) Restore(ctx context.Context, id int) error {
+	rows, err := s.repo.Restore(ctx, id)
+	if err!=nil{
+		return apperrors.NewDatabaseError(err, "")
+	}
+	if rows == 0{
+		return apperrors.NewBusinessError(errors.New("failed to restore member: the entity is already active or doesn't exist"), "El afiliado ya se encuentra activo o no existe.")
+	}
+	return nil
+}
+
+// borra definitivamente el afiliado y sus parientes de la base de datos
+// no hace falta chequear rows porque es una funcion idempotente
+func (s *MemberService) HardDelete(ctx context.Context, id int) error {
+	err := s.repo.HardDelete(ctx, id)
+	if err!=nil{
+		return apperrors.NewDatabaseError(err, "")
+	}
+	return nil
+}
+
+
+
+
+
+
