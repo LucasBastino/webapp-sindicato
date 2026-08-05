@@ -8,6 +8,7 @@ import (
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
 	p "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/app-sindicato/internal/validation"
 )
 
 
@@ -18,13 +19,18 @@ func toModel(req request) (Member, error) {
 	}
 
 	// ya esta validado, no hace falta chequear el error
-	birthdayTime, err := time.Parse("02/01/2006", req.Birthday)
+	birthdayTime, err := v.ParseDMY(req.Birthday)
 	if err!=nil{
 		return Member{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse birthday: %w", err), "")
 	}
-	entryDateTime, err := time.Parse("02/01/2006", req.EntryDate)
-	if err!=nil{
-		return Member{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse entry_date: %w", err), "")
+
+	var entryDateTime *time.Time
+	if req.EntryDate != "" {
+		t, err := v.ParseDMY(req.EntryDate)
+		if err!=nil{
+			return Member{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse entry_date: %w", err), "")
+		}
+		entryDateTime = &t
 	}
 
 	// chequeo el *string por si es nil
@@ -59,10 +65,24 @@ func toModel(req request) (Member, error) {
 
 }
 
+func formatEntryDate(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("02/01/2006")
+}
+
+func memberStatusFlags(m Member) (isDeleted, isInactive bool) {
+	isDeleted = m.DeletedAt != nil
+	isInactive = !isDeleted && m.CompanyDeletedAt != nil
+	return isDeleted, isInactive
+}
+
 func toResponse(m Member) response {
 
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
 	cuil := p.StrOrDBNull(m.Cuil)
+	isDeleted, isInactive := memberStatusFlags(m)
 
     return response{
         ID:            m.ID,
@@ -82,11 +102,13 @@ func toResponse(m Member) response {
         Cuil:          cuil,
         CompanyID:  m.CompanyID,
         Category:      m.Category,
-        EntryDate:     m.EntryDate.Format("02/01/2006"),
+        EntryDate:     formatEntryDate(m.EntryDate),
         Observations:  m.Observations,
         CreatedAt:     m.CreatedAt.Format("02/01/2006"),
         UpdatedAt:     m.UpdatedAt.Format("02/01/2006"),
 		CompanyName: m.CompanyName,
+		IsDeleted:   isDeleted,
+		IsInactive:  isInactive,
     }
 }
 
@@ -136,6 +158,7 @@ func mergetoResponse(m Member, req request) (response, error) {
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
 	cuil := p.StrOrDBNull(m.Cuil)
 	// de esta manera, puede compararse con un string vacio del request, sino no son del mismo tipo y por lo tanto, no son comparables
+	isDeleted, isInactive := memberStatusFlags(m)
 
     return response{
     	Name:           p.MergeField(m.Name, req.Name),
@@ -154,26 +177,28 @@ func mergetoResponse(m Member, req request) (response, error) {
 		Cuil:           p.MergeField(cuil, req.Cuil),
 		CompanyID:   companyID,
 		Category:       p.MergeField(m.Category, req.Category),
-		EntryDate:      p.MergeField(m.EntryDate.Format("02/01/2006"), req.EntryDate),
+		EntryDate:      p.MergeField(formatEntryDate(m.EntryDate), req.EntryDate),
 		Observations:   p.MergeField(m.Observations, req.Observations),
 		CreatedAt:      m.CreatedAt.Format("02/01/2006"),
 		UpdatedAt:      m.UpdatedAt.Format("02/01/2006"),
 		CompanyName: p.MergeField(m.CompanyName, req.CompanyName),
+		IsDeleted:   isDeleted,
+		IsInactive:  isInactive,
     }, nil
 }
 
 func toTableResponse(m Member) tableResponse {
-	isDeleted := m.DeletedAt != nil
-	isInactive := !isDeleted && m.CompanyDeletedAt != nil
+	isDeleted, isInactive := memberStatusFlags(m)
 
     return tableResponse{
-        ID:          m.ID,
-        Name:        m.Name,
-        LastName:    m.LastName,
-        Dni:         m.Dni,
-        CompanyName: m.CompanyName,
-        IsDeleted:   isDeleted,
-        IsInactive:  isInactive,
+        ID:           m.ID,
+        Name:         m.Name,
+        LastName:     m.LastName,
+        Dni:          m.Dni,
+        MemberNumber: m.MemberNumber,
+        CompanyName:  m.CompanyName,
+        IsDeleted:    isDeleted,
+        IsInactive:   isInactive,
     }
 }
 

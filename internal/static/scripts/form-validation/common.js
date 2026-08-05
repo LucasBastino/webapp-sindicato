@@ -1,4 +1,4 @@
-export function validateForm(fields, model, action) {
+export function validateForm(fields) {
     let isValid = true;
 
     clearErrors();
@@ -15,28 +15,27 @@ export function validateForm(fields, model, action) {
         }
     }
 
-    if (isValid){
-        postForm(model, action);
+    return isValid;
+}
+
+export function getInputValue(id) {
+    const el = document.getElementById(id);
+    return el ? (el.value || "") : "";
+}
+
+export function showError(id, error) {
+    const input = document.getElementById(id);
+    const formGroup = input ? input.closest(".form-group") : null;
+    const errorEl = (formGroup && formGroup.querySelector(".field-error"))
+        || document.querySelector(`.${id}-error`);
+    if (errorEl) errorEl.innerHTML = error;
+    if (input) {
+        if (formGroup) formGroup.classList.add("input-invalid");
+        else input.classList.add("input-invalid");
     }
 }
 
-function showError(id, error){
-    const errorDiv = document.querySelector(`.${id}-error`);
-    if (!errorDiv) return;
-    errorDiv.style.display = 'inline'
-    errorDiv.innerHTML = error
-}
-
 function clearErrors() {
-    // obtiene todos los elementos que terminarn con "-error"
-    const errors = document.querySelectorAll('[class$="-error"]');
-    errors.forEach(e => {
-        e.style.display = 'none';
-        e.innerHTML = '';
-    });
+    document.querySelectorAll('.field-error').forEach(e => { e.innerHTML = ''; });
+    document.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid'));
 }
-
-function postForm(model, action){
-    document.getElementById(`submit-${action}-${model}-btn`).click()
-}
-

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ver familiar</title>
+  <title>{{if eq .PageContext.Mode "add"}}Agregar familiar{{else}}Ver familiar{{end}}</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,88 +30,157 @@
 
 {{define "parent-content"}}
 
-    <div class="parent-page">
-      <div class="modal-container">
-        <div class="modal-header">
-          <div class="modal-icon">
-            <i data-lucide="users"></i>
-          </div>
-          <div class="modal-header-text">
-            <h2>Ver familiar</h2>
-          </div>
-          <button class="close-btn" id="btn-close" aria-label="Cerrar">
-            <i data-lucide="x"></i>
+<div class="parent-page">
+  <div class="modal-container">
+    <div class="modal-header">
+      <div class="modal-icon">
+        <i data-lucide="users"></i>
+      </div>
+      <div class="modal-header-text">
+        <h2>{{if eq .PageContext.Mode "add"}}Agregar familiar{{else}}Ver familiar{{end}}</h2>
+      </div>
+      <button class="close-btn" id="btn-close" type="button" aria-label="Cerrar"
+              hx-get="/members/{{.MemberID}}/parents"
+              hx-target="#main-content"
+              hx-swap="innerHTML"
+              hx-push-url="true">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <form id="parent-form"
+          {{if eq .PageContext.Mode "add"}}class="is-editing"{{end}}
+          {{if eq .PageContext.Mode "add"}}
+          hx-post="/members/{{.MemberID}}/parents"
+          hx-target="#main-content"
+          {{else}}
+          hx-put="/parents/{{.Parent.ID}}"
+          hx-target="#parent-modal-container"
+          hx-on::before-request="this.querySelectorAll('select').forEach(function(s){ s.disabled = false; })"
+          {{end}}
+          hx-swap="innerHTML">
+      <div class="modal-form-grid">
+        <div class="modal-form-row">
+          <label for="name">Nombres <span class="required-marker">*</span></label>
+          <input type="text" id="name" name="name"
+                 value="{{.Parent.Name}}"
+                 {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                 {{if index .Errors "name"}}class="input-invalid"{{end}} />
+          <span class="name-error field-error">{{with index .Errors "name"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row">
+          <label for="last-name">Apellidos <span class="required-marker">*</span></label>
+          <input type="text" id="last-name" name="last-name"
+                 value="{{.Parent.LastName}}"
+                 {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                 {{if index .Errors "lastName"}}class="input-invalid"{{end}} />
+          <span class="last-name-error field-error">{{with index .Errors "lastName"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row">
+          <label for="relationship">Parentesco <span class="required-marker">*</span></label>
+          <input type="text" id="relationship" name="relationship"
+                 value="{{.Parent.Relationship}}"
+                 {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                 {{if index .Errors "relationship"}}class="input-invalid"{{end}} />
+          <span class="relationship-error field-error">{{with index .Errors "relationship"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row">
+          <label for="birthday">Fecha de nacimiento <span class="required-marker">*</span></label>
+          <input type="text" id="birthday" name="birthday"
+                 value="{{.Parent.Birthday}}"
+                 placeholder="DD/MM/AAAA"
+                 {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                 {{if index .Errors "birthday"}}class="input-invalid"{{end}} />
+          <span class="birthday-error field-error">{{with index .Errors "birthday"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row">
+          <label for="gender">Género <span class="required-marker">*</span></label>
+          <select id="gender" name="gender" {{if ne .PageContext.Mode "add"}}disabled{{end}}
+                  {{if index .Errors "gender"}}class="input-invalid"{{end}}>
+            <option value="" {{if eq .Parent.Gender ""}}selected{{end}}>Seleccionar</option>
+            <option value="Masculino" {{if eq .Parent.Gender "Masculino"}}selected{{end}}>Masculino</option>
+            <option value="Femenino" {{if eq .Parent.Gender "Femenino"}}selected{{end}}>Femenino</option>
+            <option value="No binario" {{if eq .Parent.Gender "No binario"}}selected{{end}}>No binario</option>
+            <option value="Masculino transgénero" {{if eq .Parent.Gender "Masculino transgénero"}}selected{{end}}>Masculino transgénero</option>
+            <option value="Femenino transgénero" {{if eq .Parent.Gender "Femenino transgénero"}}selected{{end}}>Femenino transgénero</option>
+            <option value="Otra identidad" {{if eq .Parent.Gender "Otra identidad"}}selected{{end}}>Otra identidad</option>
+            <option value="Sin especificar" {{if eq .Parent.Gender "Sin especificar"}}selected{{end}}>Sin especificar</option>
+          </select>
+          <span class="gender-error field-error">{{with index .Errors "gender"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row">
+          <label for="cuil">CUIL</label>
+          <input type="text" id="cuil" name="cuil"
+                 value="{{.Parent.Cuil}}"
+                 {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                 {{if index .Errors "cuil"}}class="input-invalid"{{end}} />
+          <span class="cuil-error field-error">{{with index .Errors "cuil"}}{{.}}{{end}}</span>
+        </div>
+
+        <div class="modal-form-row modal-form-row--auto">
+          <label for="observations">Observaciones</label>
+          <textarea id="observations" name="observations"
+                    {{if ne .PageContext.Mode "add"}}readonly{{end}}
+                    rows="3">{{.Parent.Observations}}</textarea>
+        </div>
+      </div>
+
+      {{if ne .PageContext.Mode "add"}}
+      <div class="modal-divider"></div>
+      <div class="modal-meta">
+        <i data-lucide="clock"></i>
+        <span>Creado: {{.Parent.CreatedAt}} &bull; Actualizado: {{.Parent.UpdatedAt}}</span>
+      </div>
+      {{end}}
+
+      <div class="modal-actions">
+        {{if eq .PageContext.Mode "add"}}
+          <button class="btn btn-primary" id="btn-add-parent" type="submit">
+            <i data-lucide="plus"></i>
+            Agregar
           </button>
-        </div>
-
-        <div class="modal-form-grid">
-          <div class="modal-form-row">
-            <label for="nombres">Nombres</label>
-            <input type="text" id="nombres" value="María Pérez" readonly />
-          </div>
-
-          <div class="modal-form-row">
-            <label for="apellidos">Apellidos</label>
-            <input type="text" id="apellidos" value="Pérez" readonly />
-          </div>
-
-          <div class="modal-form-row">
-            <label for="parentesco">Parentesco</label>
-            <input type="text" id="parentesco" value="Esposa" readonly />
-          </div>
-
-          <div class="modal-form-row">
-            <label for="fecha-nacimiento">Fecha de nacimiento</label>
-            <input type="date" id="fecha-nacimiento" value="1986-04-12" readonly />
-          </div>
-
-          <div class="modal-form-row">
-            <label for="genero">Género</label>
-            <select id="genero" disabled>
-              <option selected>Femenino</option>
-              <option>Masculino</option>
-            </select>
-          </div>
-
-          <div class="modal-form-row">
-            <label for="cuil">CUIL</label>
-            <input type="text" id="cuil" value="27-23456789-0" readonly />
-          </div>
-        </div>
-
-        <div class="modal-divider"></div>
-
-        <div class="modal-meta">
-          <i data-lucide="clock"></i>
-          <span>Creado: 15/06/2024 &bull; Actualizado: 20/05/2025</span>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn btn-secondary" id="btn-edit">
+        {{else if .PageContext.UserAuthInfo.CanEdit "member"}}
+          <button class="btn btn-secondary" id="btn-edit" type="button">
             <i data-lucide="pencil"></i>
             Editar
           </button>
-          <button class="btn btn-primary" id="btn-save">
+          <button class="btn btn-primary" id="btn-save" type="submit" style="display:none;">
             <i data-lucide="save"></i>
             Guardar
           </button>
-        </div>
+        {{end}}
       </div>
-    </div>
+
+    </form>
+
+  </div>
+</div>
 
 <script>
   lucide.createIcons();
 
-  var isEditing = false;
-  var formInputs = document.querySelectorAll('.modal-form-grid input, .modal-form-grid select');
+  {{if eq .PageContext.Mode "add"}}
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    if (evt.detail.verb === 'post') {
+      evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
+    }
+  });
+  {{end}}
+
+  {{if and (ne .PageContext.Mode "add") (.PageContext.UserAuthInfo.CanEdit "member")}}
+  var formInputs = document.querySelectorAll('#parent-form input, #parent-form select');
   var btnEdit = document.getElementById('btn-edit');
   var btnSave = document.getElementById('btn-save');
-  var btnClose = document.getElementById('btn-close');
-  var modalContainer = document.querySelector('.parent-page');
+  var isEditing = false;
 
   btnEdit.addEventListener('click', function() {
     isEditing = !isEditing;
-
+    document.getElementById('parent-form').classList.toggle('is-editing', isEditing);
     if (isEditing) {
       formInputs.forEach(function(input) {
         if (input.tagName === 'SELECT') {
@@ -135,57 +204,46 @@
       btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
       btnSave.style.display = 'none';
     }
-
     lucide.createIcons();
   });
 
-  btnSave.addEventListener('click', function() {
-    formInputs.forEach(function(input) {
-      if (input.tagName === 'SELECT') {
-        input.disabled = true;
-      } else {
-        input.setAttribute('readonly', 'readonly');
-      }
-      input.classList.remove('editable');
+  {{if .Errors}}
+  btnEdit.click();
+  {{end}}
+  {{end}}
+
+  function closeParentModal() {
+    htmx.ajax('GET', '/members/{{.MemberID}}/parents', {
+      target: '#main-content',
+      swap: 'innerHTML',
+      pushUrl: true
     });
+  }
 
-    isEditing = false;
-    btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
-    btnSave.style.display = 'none';
-    lucide.createIcons();
-  });
-
-  btnClose.addEventListener('click', function() {
-    modalContainer.style.display = 'none';
-  });
-
-  modalContainer.addEventListener('click', function(e) {
-    if (e.target === modalContainer) {
-      modalContainer.style.display = 'none';
-    }
+  document.querySelector('.parent-page').addEventListener('click', function(e) {
+    if (e.target === this) closeParentModal();
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      modalContainer.style.display = 'none';
-    }
+    if (e.key === 'Escape') closeParentModal();
   });
 
-  btnSave.style.display = 'none';
+</script>
 
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
+<script type="module">
+  import { validateParent } from '/static/scripts/form-validation/parent.js';
 
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
-    });
-
-    document.addEventListener('click', function() {
-      menu.classList.remove('show');
-    });
-  }
+  const form = document.getElementById('parent-form');
+  // capture (true): corre antes que el listener de HTMX en el form.
+  // Si la validación falla:
+  // - preventDefault: cancela el submit nativo
+  // - stopImmediatePropagation: evita que HTMX vea el evento y dispare el request
+  form?.addEventListener('submit', (e) => {
+    if (!validateParent()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
 </script>
 
 {{end}}

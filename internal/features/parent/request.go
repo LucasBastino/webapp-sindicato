@@ -14,6 +14,7 @@ type request struct {
 	Birthday     string `form:"birthday"`
 	Gender       string `form:"gender"`
 	Cuil         string `form:"cuil"`
+	Observations string `form:"observations"`
 }
 
 func (req *request) trim() {
@@ -23,6 +24,7 @@ func (req *request) trim() {
 	req.Birthday = strings.TrimSpace(req.Birthday)
 	req.Gender = strings.TrimSpace(req.Gender)
 	req.Cuil = strings.TrimSpace(req.Cuil)
+	req.Observations = strings.TrimSpace(req.Observations)
 }
 
 // no chequeo memberID porque el parent no puede cambiar de member

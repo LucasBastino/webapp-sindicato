@@ -50,11 +50,12 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 	}
 
 	claims := authdomain.AuthClaims{
-		Sub:       		user.ID,
-		Exp:    	   	time.Now().Add(time.Minute * 5),
-		Iat:	       	time.Now(),
-		Admin:   		user.Admin,
-		ResourceRoles:	user.ResourceRoles,
+		Sub:           user.ID,
+		Exp:           time.Now().Add(time.Minute * 5),
+		Iat:           time.Now(),
+		Username:      user.Username,
+		Admin:         user.Admin,
+		ResourceRoles: user.ResourceRoles,
 	}
     
     refreshToken, err := s.CreateRefreshToken(ctx, user.ID)
@@ -148,6 +149,7 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, rawRefreshToken st
         Sub:            refreshToken.UserID,
         Exp:            time.Now().Add(s.cfg.AccessTokenTTL),
         Iat:            time.Now(),
+        Username:       user.Username,
         Admin:          user.Admin,
         ResourceRoles:  user.ResourceRoles,
     }
@@ -160,7 +162,7 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, rawRefreshToken st
     return accessToken, &claims, nil
 }
 
-func (s *AuthService) Register(ctx context.Context, user user.User, password string) (int, error) {
+func (s *AuthService) Register(ctx context.Context, user user.User, password string, idempotencyKey string) (int, error) {
     byteHash, err := s.passwordHasher.Generate(password)
 	if err != nil {
 		return 0, apperrors.NewInternalError(fmt.Errorf("failed to generate password hash: %w", err), "")
@@ -168,7 +170,7 @@ func (s *AuthService) Register(ctx context.Context, user user.User, password str
     passWordHash := string(byteHash)
     user.PasswordHash = passWordHash
     
-    return s.userService.Create(ctx, user)
+    return s.userService.Create(ctx, user, idempotencyKey)
 }
 
 func (s *AuthService) Logout(ctx context.Context, rawRefreshToken string) error {

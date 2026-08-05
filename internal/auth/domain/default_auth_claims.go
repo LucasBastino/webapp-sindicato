@@ -6,7 +6,8 @@ type AuthClaims struct {
 	Sub int		// subject	
 	Exp time.Time	// expiration time
 	Iat time.Time	// issued at
-	Admin      bool
+	Username      string
+	Admin         bool
 	ResourceRoles map[string]any
 }
 

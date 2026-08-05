@@ -1,0 +1,95 @@
+{{define "update-permissions-modal"}}
+<div class="users-modal-overlay" id="users-modal-overlay"
+     onclick="if(event.target===this) document.getElementById('users-modal-container').innerHTML=''">
+  <div class="users-modal" role="dialog" aria-modal="true" aria-labelledby="permissions-title">
+    <div class="users-modal-header">
+      <div class="users-modal-header-left">
+        <div class="users-modal-icon" aria-hidden="true">
+          <i data-lucide="shield"></i>
+        </div>
+        <div>
+          <h3 id="permissions-title">Permisos{{if .Username}} — {{.Username}}{{end}}</h3>
+          <p>Definí si es admin y el nivel de acceso por recurso.</p>
+        </div>
+      </div>
+      <button class="modal-close" type="button" aria-label="Cerrar"
+              onclick="document.getElementById('users-modal-container').innerHTML=''">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <form id="update-permissions-form"
+          hx-put="/users/{{.ID}}/permissions"
+          hx-target="#main-content"
+          hx-swap="innerHTML">
+      <div class="users-modal-body">
+        <div class="form-group{{if index .Errors "admin"}} input-invalid{{end}}">
+          <label class="checkbox-label">
+            <input type="checkbox" id="admin-checkbox" name="admin" value="on"
+                   {{if .Admin}}checked{{end}}
+                   onchange="syncAdminPermissions(this)">
+            Administrador
+          </label>
+          <p class="field-error">{{with index .Errors "admin"}}{{.}}{{end}}</p>
+        </div>
+
+        {{if index .Errors "resourceRoles"}}
+        <p class="field-error">{{index .Errors "resourceRoles"}}</p>
+        {{end}}
+
+        <div class="permissions-grid">
+          <div class="form-group{{if index .Errors "member"}} input-invalid{{end}}">
+            <label for="member">Afiliados</label>
+            <select id="member" name="member" class="permission-select" {{if .Admin}}disabled{{end}}>
+              <option value="editor" {{if or .Admin (eq (.Role "member") "editor")}}selected{{end}}>Editor</option>
+              <option value="viewer" {{if and (not .Admin) (eq (.Role "member") "viewer")}}selected{{end}}>Solo lectura</option>
+              <option value="" {{if and (not .Admin) (eq (.Role "member") "")}}selected{{end}}>Sin acceso</option>
+            </select>
+            <p class="field-error">{{with index .Errors "member"}}{{.}}{{end}}</p>
+          </div>
+
+          <div class="form-group{{if index .Errors "company"}} input-invalid{{end}}">
+            <label for="company">Empresas y pagos</label>
+            <select id="company" name="company" class="permission-select" {{if .Admin}}disabled{{end}}>
+              <option value="editor" {{if or .Admin (eq (.Role "company") "editor")}}selected{{end}}>Editor</option>
+              <option value="viewer" {{if and (not .Admin) (eq (.Role "company") "viewer")}}selected{{end}}>Solo lectura</option>
+              <option value="" {{if and (not .Admin) (eq (.Role "company") "")}}selected{{end}}>Sin acceso</option>
+            </select>
+            <p class="field-error">{{with index .Errors "company"}}{{.}}{{end}}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="users-modal-footer">
+        <button class="btn btn-secondary" type="button"
+                onclick="document.getElementById('users-modal-container').innerHTML=''">
+          Cancelar
+        </button>
+        <button class="btn btn-primary" type="submit">Guardar permisos</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  lucide.createIcons();
+
+  function syncAdminPermissions(checkbox) {
+    var selects = document.querySelectorAll('.permission-select');
+    selects.forEach(function(select) {
+      if (checkbox.checked) {
+        select.value = 'editor';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+      }
+    });
+  }
+
+  (function() {
+    var checkbox = document.getElementById('admin-checkbox');
+    if (checkbox && checkbox.checked) {
+      syncAdminPermissions(checkbox);
+    }
+  })();
+</script>
+{{end}}

@@ -2,75 +2,87 @@ package installment
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/app-sindicato/internal/validation"
 )
 
 func toModel(req request) (Installment, error) {
-	paidAt, err := time.Parse("02/01/2006", req.PaidAt)
-	if err!=nil{
+	installment := Installment{
+		Observations: req.Observations,
+	}
+	if req.PaidAt == "" {
+		return installment, nil
+	}
+	paidAt, err := v.ParseDMY(req.PaidAt)
+	if err != nil {
 		return Installment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse paid-at: %w", err), "")
 	}
-
-    return Installment{
-        PaidAt:  		&paidAt,
-        Observations: 	req.Observations,
-    }, nil
+	installment.PaidAt = &paidAt
+	return installment, nil
 }
 
 // cuando da error el formulario queriendo editar
 func mergetoResponse(i Installment, req request) (response, error) {
-	updatedInstallment := i
-	if req.PaidAt == ""{
+	status := i.GetStatus()
+	if req.PaidAt == "" {
+		updatedInstallment := i
 		updatedInstallment.PaidAt = nil
-	} else {
-		paidAt, err := time.Parse("02/01/2006", req.PaidAt)
-		if err!=nil{
-			return response{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse paid-at: %w", err), "")
-		}
-		updatedInstallment.PaidAt = &paidAt
+		status = updatedInstallment.GetStatus()
 	}
+
 	return response{
-		Amount:       	i.Amount,
-		Status:			updatedInstallment.GetStatus(),
-		PaidAt:  		pu.MergeField(i.PaidAt.Format("02/01/2006"), req.PaidAt),
-		Observations: 	pu.MergeField(i.Observations, req.Observations),
-		UpdatedAt:    	i.UpdatedAt.Format("02/01/2006"),
+		ID:                i.ID,
+		PaymentPlanID:     i.PaymentPlanID,
+		InstallmentNumber: i.InstallmentNumber,
+		Amount:            i.Amount,
+		Status:            status,
+		DueDate:           i.DueDate.Format("02/01/2006"),
+		PaidAt:            req.PaidAt,
+		IsPaid:            req.PaidAt != "",
+		Observations:      req.Observations,
+		UpdatedAt:         i.UpdatedAt.Format("02/01/2006"),
 	}, nil
 }
 
 func toResponse(i Installment) response {
-    return response{
-		Amount:     	i.Amount,
-        Status:       	i.GetStatus(),
-        PaidAt:  		i.PaidAt.Format("02/01/2006"),
-        Observations: 	i.Observations,
-        UpdatedAt:   	i.UpdatedAt.Format("02/01/2006"),
-    }
-}
-
-// func toResponses(installments []Installment) []response{
-// 	Responses := make([]response, len(installments))
-// 	for i, installment := range installments{
-// 		Responses[i] = toResponse(installment)
-// 	}
-// 	return Responses
-// }
-
-func toGridResponse(i Installment) gridResponse {
-	return gridResponse{
-		Amount: i.Amount,
-		Status: i.GetStatus(),
-		PaidAt:	i.PaidAt.Format("02/01/2006"),
+	paidAtStr := ""
+	if i.PaidAt != nil {
+		paidAtStr = i.PaidAt.Format("02/01/2006")
+	}
+	return response{
+		ID:                i.ID,
+		PaymentPlanID:     i.PaymentPlanID,
+		InstallmentNumber: i.InstallmentNumber,
+		Amount:            i.Amount,
+		Status:            i.GetStatus(),
+		DueDate:           i.DueDate.Format("02/01/2006"),
+		PaidAt:            paidAtStr,
+		IsPaid:            i.PaidAt != nil,
+		Observations:      i.Observations,
+		UpdatedAt:         i.UpdatedAt.Format("02/01/2006"),
 	}
 }
 
-func toGridResponses(installments []Installment) []gridResponse{
+func toGridResponse(i Installment) gridResponse {
+	paidAtStr := ""
+	if i.PaidAt != nil {
+		paidAtStr = i.PaidAt.Format("02/01/2006")
+	}
+	return gridResponse{
+		ID:                i.ID,
+		InstallmentNumber: i.InstallmentNumber,
+		Amount:            i.Amount,
+		Status:            i.GetStatus(),
+		DueDate:           i.DueDate.Format("02/01/2006"),
+		PaidAt:            paidAtStr,
+	}
+}
+
+func toGridResponses(installments []Installment) []gridResponse {
 	responses := make([]gridResponse, len(installments))
-	for i, installment := range installments{
-		responses[i] = toGridResponse(installment)
+	for i, inst := range installments {
+		responses[i] = toGridResponse(inst)
 	}
 	return responses
 }

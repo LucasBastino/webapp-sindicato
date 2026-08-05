@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Padrón electoral</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "electoral-member-list-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>
+
+{{define "electoral-member-list-content"}}
+
+    <div class="page-header affiliate-header electoral-padron-header">
+      <div>
+        <h1>Padrón electoral</h1>
+        <p class="electoral-padron-subtitle">Listado de afiliados habilitados.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" type="button"
+                hx-get="/reports"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="arrow-left"></i>
+          Reportes
+        </button>
+        {{if ne (len .Members) 0}}
+        <button type="button" class="btn btn-print-padron" onclick="window.print()">
+          <i data-lucide="printer"></i>
+          Imprimir padrón
+        </button>
+        {{end}}
+      </div>
+    </div>
+
+    <div class="card table-card electoral-padron-card">
+      {{if eq (len .Members) 0}}
+        {{template "empty-state" .EmptyState}}
+      {{else}}
+      <div class="table-wrapper electoral-table--screen">
+        <table class="affiliate-table">
+          <thead>
+            <tr>
+              <th class="col-name">Afiliado</th>
+              <th class="col-dni">DNI</th>
+              <th class="col-company">Empresa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Members}}
+            <tr>
+              <td class="col-name">{{.LastName}}, {{.Name}}</td>
+              <td class="col-dni">{{.Dni}}</td>
+              <td class="col-company">{{.CompanyName}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrapper electoral-table--print">
+        <table class="affiliate-table electoral-print-table">
+          <thead>
+            <tr>
+              <th class="col-name">Afiliado</th>
+              <th class="col-dni">DNI</th>
+              <th class="col-company">Empresa</th>
+              <th class="col-voto">Votó</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Members}}
+            <tr>
+              <td class="col-name">{{.LastName}}, {{.Name}}</td>
+              <td class="col-dni">{{.Dni}}</td>
+              <td class="col-company">{{.CompanyName}}</td>
+              <td class="col-voto"><span class="voto-box" aria-hidden="true"></span></td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{end}}
+    </div>
+
+    <script>
+      lucide.createIcons();
+    </script>
+
+{{end}}

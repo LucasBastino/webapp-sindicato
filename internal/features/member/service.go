@@ -3,17 +3,22 @@ package member
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/app-sindicato/internal/common/page"
+	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 )
 
 type MemberService struct {
-	repo *MemberRepository
+	repo        *MemberRepository
+	idempotency *idempotency.IdempotencyService
 }
 
-func NewMemberService(repo *MemberRepository) *MemberService {
+func NewMemberService(repo *MemberRepository, idempotencyService *idempotency.IdempotencyService) *MemberService {
 	return &MemberService{
-		repo: repo,
+		repo:        repo,
+		idempotency: idempotencyService,
 	}
 }
 
@@ -57,11 +62,38 @@ func (s *MemberService) Count(ctx context.Context, filters memberFilters) (int, 
 	return count, nil
 }
 
+func (s *MemberService) CountActive(ctx context.Context) (int, error) {
+	return s.Count(ctx, memberFilters{
+		statuses: page.StatusFilters{ShowActive: true},
+	})
+}
 
-func (s *MemberService) Create(ctx context.Context, member Member) (int, error) {
-	id, err := s.repo.Insert(ctx, member)
+func (s *MemberService) FindRecent(ctx context.Context, limit int) ([]Member, error) {
+	members, err := s.repo.FindRecent(ctx, limit)
+	if err != nil {
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+	return members, nil
+}
+
+func (s *MemberService) Create(ctx context.Context, member Member, idempotencyKey string) (int, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return 0, apperrors.NewDatabaseError(fmt.Errorf("failed to begin tx creating member: %w", err), "")
+	}
+	defer tx.Rollback()
+
+	id, err := s.repo.Insert(ctx, tx, member)
 	if err!=nil{
 		return 0, apperrors.NewDatabaseError(err, "")
+	}
+
+	if err := s.idempotency.UpdateResource(ctx, tx, idempotencyKey, "member", id); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, apperrors.NewDatabaseError(fmt.Errorf("failed to commit member create: %w", err), "")
 	}
 
 	return id, nil
@@ -109,9 +141,3 @@ func (s *MemberService) HardDelete(ctx context.Context, id int) error {
 	}
 	return nil
 }
-
-
-
-
-
-

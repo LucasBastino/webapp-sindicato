@@ -77,4 +77,3 @@ func GetSearchKey(c *fiber.Ctx) string {
 	}
 	return key
 }
-

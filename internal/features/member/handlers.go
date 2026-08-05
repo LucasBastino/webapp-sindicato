@@ -9,21 +9,22 @@ import (
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
 	"github.com/LucasBastino/app-sindicato/internal/common/page"
 	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/app-sindicato/internal/features/company"
 	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 	"github.com/gofiber/fiber/v2"
 )
 
 type MemberHandler struct{
 	service *MemberService
-	idempotencyService *idempotency.IdempotencyService
+	companyService *company.CompanyService
 
 	normalizer authports.ClaimsNormalizer
 }
 
-func NewMemberHandler(service *MemberService, idempotencyService *idempotency.IdempotencyService, normalizer authports.ClaimsNormalizer) *MemberHandler{
+func NewMemberHandler(service *MemberService, companyService *company.CompanyService, normalizer authports.ClaimsNormalizer) *MemberHandler{
 	return &MemberHandler{
 		service: service,
-		idempotencyService: idempotencyService,
+		companyService: companyService,
 		normalizer: normalizer,
 	}
 }
@@ -67,70 +68,77 @@ func (h *MemberHandler) RenderTable(c *fiber.Ctx) error {
 }
 
 func (h *MemberHandler) RenderAddForm(c *fiber.Ctx) error {
-	companyID, err := httpUtils.GetIDByParam(c, "company_id")
-	if err!=nil{
-		return err
-	}
 	userAuthInfo, err := httpUtils.GetUserAuthInfo(c)
-	if err!=nil{
+	if err != nil {
 		return err
 	}
 	res := response{}
-	
-	if companyID != 0{
-		res.CompanyID = companyID
+	activeSection := "members"
+	if raw := c.Params("company_id"); raw != "" {
+		companyID, err := strconv.Atoi(raw)
+		if err != nil {
+			return apperrors.NewBadRequestError(fmt.Errorf("invalid company id: %w", err), "")
+		}
+		if companyID != 0 {
+			res.CompanyID = companyID
+			activeSection = "companies"
+		}
 	}
-	
-	pageData := pageData{Member: res, PageContext: page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: "members"}}
-	return c.Render("member/member", pageData)
+	pageData := pageData{
+		Member:      res,
+		PageContext: page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: activeSection},
+	}
+	return h.renderMemberPage(c, pageData, 0)
 }
 
 func (h *MemberHandler) renderDefaultTable(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
 	var companyID *int
-	var companyIDParam int
-	var err error
+	companyIDParam := 0
 
-	raw := c.Query("id")
-	if raw != "" {
-		// si el param existe obtengo el companyID de la URL
-		companyIDParam, err = strconv.Atoi(raw)
+	if raw := c.Params("company_id"); raw != "" {
+		id, err := strconv.Atoi(raw)
 		if err != nil {
 			return apperrors.NewBadRequestError(fmt.Errorf("invalid company id: %w", err), "")
 		}
-		companyID = &companyIDParam
-	}
-
-	// si el companyID es 0 el valor tiene que ser nil
-	if companyIDParam != 0{
-		companyID = &companyIDParam
-	} else{
-		companyID = nil
+		if id != 0 {
+			companyIDParam = id
+			companyID = &companyIDParam
+		}
+	} else if raw := c.Query("company_id"); raw != "" {
+		id, err := strconv.Atoi(raw)
+		if err != nil {
+			return apperrors.NewBadRequestError(fmt.Errorf("invalid company id: %w", err), "")
+		}
+		if id != 0 {
+			companyIDParam = id
+			companyID = &companyIDParam
+		}
 	}
 
 	userAuthInfo, err := httpUtils.GetUserAuthInfo(c)
-	if err!=nil{
+	if err != nil {
 		return err
 	}
 
-	// FILTROS
 	searchKey := httpUtils.GetSearchKey(c)
-	
-	// obtengo los filtros del form
 	statusFilters := httpUtils.GetStatusFilters(c)
 
-	// declaro los filtros
 	filters := memberFilters{
 		searchKey: searchKey,
-		statuses: statusFilters,
+		statuses:  statusFilters,
 		companyID: companyID,
 	}
 
-	// cuento la cantidad de resultados obtenidos con estos filtros
 	totalRows, err := h.service.Count(ctx, filters)
-	if err!=nil {
+	if err != nil {
 		return err
+	}
+
+	activeSection := "members"
+	if companyIDParam != 0 {
+		activeSection = "companies"
 	}
 
 	pageContext := page.PageContext{
@@ -138,14 +146,23 @@ func (h *MemberHandler) renderDefaultTable(c *fiber.Ctx) error {
 		UserAuthInfo:  userAuthInfo,
 		SearchKey:     searchKey,
 		StatusFilters: statusFilters,
-		ActiveSection: "members",
+		ActiveSection: activeSection,
 	}
 
 	var members []tableResponse
 	var emptyState page.EmptyState
 
+	addHref := "/members/new"
+	if companyIDParam != 0 {
+		addHref = fmt.Sprintf("/companies/%d/members/new", companyIDParam)
+	}
+
 	if totalRows == 0 {
-		emptyState = page.NewEmptyState("users", "afiliados", "/members/new", "Agregar afiliado")
+		if userAuthInfo.CanEdit("member") && statusFilters.ShowActive {
+			emptyState = page.NewEmptyState("users", "afiliados", addHref, "Agregar afiliado")
+		} else {
+			emptyState = page.NewNoResultsEmptyState("users", "afiliados")
+		}
 	} else {
 		currentPage := httpUtils.GetPageByQueryParam(c)
 		pagination := page.BuildPagination(currentPage, totalRows)
@@ -162,7 +179,16 @@ func (h *MemberHandler) renderDefaultTable(c *fiber.Ctx) error {
 		Members:      members,
 		TotalResults: totalRows,
 		EmptyState:   emptyState,
+		CompanyID:    companyIDParam,
 		PageContext:  pageContext,
+	}
+
+	if companyIDParam != 0 {
+		companyModel, err := h.companyService.Get(ctx, companyIDParam)
+		if err != nil {
+			return err
+		}
+		tablePageData.CompanyName = companyModel.Name
 	}
 
 	if c.Get("HX-Request") == "true" {
@@ -173,13 +199,36 @@ func (h *MemberHandler) renderDefaultTable(c *fiber.Ctx) error {
 
 func (h *MemberHandler) renderElectoralList(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	members, err:= h.service.GetElectoralList(ctx)
-	if err!=nil{
+	userAuthInfo, err := httpUtils.GetUserAuthInfo(c)
+	if err != nil {
+		return err
+	}
+
+	members, err := h.service.GetElectoralList(ctx)
+	if err != nil {
 		return err
 	}
 	responses := toTableResponses(members)
 
-	return c.Render("electoral_member_list", fiber.Map{"members": responses})
+	emptyState := page.EmptyState{}
+	if len(responses) == 0 {
+		emptyState = page.EmptyState{
+			Icon:        "clipboard-list",
+			Title:       "Padrón vacío",
+			Description: "No hay afiliados habilitados para el padrón electoral.",
+		}
+	}
+
+	tablePageData := tablePageData{
+		Members:     responses,
+		EmptyState:  emptyState,
+		PageContext: page.PageContext{UserAuthInfo: userAuthInfo, ActiveSection: "reports"},
+	}
+
+	if c.Get("HX-Request") == "true" {
+		return c.Render("electoral-member-list-content", tablePageData)
+	}
+	return c.Render("member/electoral_member_list", tablePageData)
 }
 
 
@@ -212,12 +261,20 @@ func (h *MemberHandler) Create(c *fiber.Ctx) error {
 	errorMap := req.validate()
 	if len(errorMap) > 0 {
 		res, err := toResponseFromRequest(req)
-		if err!=nil{
+		if err != nil {
 			return err
-		}		
-		PageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: "members"}
-		pageData := pageData{Member: res, PageContext: PageContext, Errors: errorMap}
-		return c.Status(fiber.StatusBadRequest).Render("member/member", pageData)
+		}
+		activeSection := "members"
+		if res.CompanyID != 0 {
+			activeSection = "companies"
+		}
+		pageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: activeSection}
+		pageData := pageData{Member: res, PageContext: pageContext, Errors: errorMap}
+		status := fiber.StatusBadRequest
+		if c.Get("HX-Request") == "true" {
+			status = fiber.StatusOK
+		}
+		return h.renderMemberPage(c, pageData, status)
 	}
 
 
@@ -226,7 +283,13 @@ func (h *MemberHandler) Create(c *fiber.Ctx) error {
 	if err!=nil{
 		return err
 	}
-	id, err := h.service.Create(ctx, member)
+
+	idempotencyKey, ok := c.Locals("idempotency_key").(string)
+	if !ok{
+		return apperrors.NewInternalError(errors.New("invalid idempotency record type in context"), "")
+	}
+
+	id, err := h.service.Create(ctx, member, idempotencyKey)
 	if err!=nil{
 		mapDBDuplicateError(err, errorMap)
 		if len(errorMap) > 0 {
@@ -234,26 +297,30 @@ func (h *MemberHandler) Create(c *fiber.Ctx) error {
 			if err!=nil{
 				return err
 			}
-			PageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: "members"}
+			activeSection := "members"
+			if res.CompanyID != 0 {
+				activeSection = "companies"
+			}
+			PageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: activeSection}
 			pageData := pageData{Member: res, PageContext: PageContext, Errors: errorMap}
-			return c.Status(fiber.StatusConflict).Render("member/member", pageData)
+			return h.renderMemberPage(c, pageData, fiber.StatusConflict)
 		}
-		return err
-	}
-
-	idempotencyKey, ok := c.Locals("idempotency_key").(string)
-	if !ok{
-		return apperrors.NewInternalError(errors.New("invalid idempotency record type in context"), "")
-	}
-
-	err = h.idempotencyService.UpdateResource(ctx, idempotencyKey, "member", id)
-	if err != nil {
 		return err
 	}
 
 	c.Status(fiber.StatusCreated)
 	return h.renderPageByID(c, id)
 
+}
+
+func (h *MemberHandler) renderMemberPage(c *fiber.Ctx, pageData pageData, status int) error {
+	if status != 0 {
+		c.Status(status)
+	}
+	if c.Get("HX-Request") == "true" {
+		return c.Render("member-content", pageData)
+	}
+	return c.Render("member/member", pageData)
 }
 
 func (h *MemberHandler) Update(c *fiber.Ctx) error {
@@ -268,6 +335,14 @@ func (h *MemberHandler) Update(c *fiber.Ctx) error {
 	if err!=nil{
 		return err
 	}
+
+	existing, err := h.service.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if existing.DeletedAt != nil {
+		return apperrors.NewBusinessError(errors.New("cannot update deleted member"), "No se puede editar un afiliado eliminado.")
+	}
 	
 	var req request
 	err = c.BodyParser(&req)
@@ -279,18 +354,18 @@ func (h *MemberHandler) Update(c *fiber.Ctx) error {
 	req.trim()
 	errorMap := req.validate()
 	if len(errorMap) > 0 {
-		member, err := h.service.Get(ctx, id)
-		if err != nil {
-			return err
-		}
-		res, err := mergetoResponse(*member, req)
+		res, err := mergetoResponse(*existing, req)
 		if err != nil {
 			return err
 		}
 
 		pageContext := page.PageContext{Mode: "edit", UserAuthInfo: userAuthInfo, ActiveSection: "members"}
 		pageData := pageData{Member: res, PageContext: pageContext, Errors: errorMap}
-		return c.Status(fiber.StatusBadRequest).Render("member/member", pageData)
+		status := fiber.StatusBadRequest
+		if c.Get("HX-Request") == "true" {
+			status = fiber.StatusOK
+		}
+		return h.renderMemberPage(c, pageData, status)
 	}
 	member, err := toModel(req)
 	if err != nil {
@@ -300,23 +375,17 @@ func (h *MemberHandler) Update(c *fiber.Ctx) error {
 	if err!=nil{
 		mapDBDuplicateError(err, errorMap)
 		if len(errorMap) > 0 {
-			res, err := mergetoResponse(member, req)
+			res, err := mergetoResponse(*existing, req)
 			if err != nil {
 				return err
 			}
 			pageContext := page.PageContext{Mode: "edit", UserAuthInfo: userAuthInfo, ActiveSection: "members"}
 			pageData := pageData{Member: res, PageContext: pageContext, Errors: errorMap}
-			return c.Status(fiber.StatusConflict).Render("member/member", pageData)
+			return h.renderMemberPage(c, pageData, fiber.StatusConflict)
 		}
 		return err
 	}
 	
-	//  hacer un redirect mejor 
-
-	/* data := fiber.Map{"member": m, "mode": "edit", "companies": companies, "companyName": companyName, "createdAt": createdAt, "updatedAt": updatedAt}
-	data["canDelete"] = c.Locals("claims").(jwt.MapClaims)["canDelete"]
-	data["canWrite"] = c.Locals("claims").(jwt.MapClaims)["canWrite"]
-	return c.Render("member_file", data) */
 	return h.renderPageByID(c, id)
 
 }

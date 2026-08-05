@@ -4,24 +4,23 @@ import (
 	"errors"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/app-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
 	"github.com/LucasBastino/app-sindicato/internal/features/user"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
-type AuthHandler struct{
+type AuthHandler struct {
 	service *AuthService
-	idempotencyService *idempotency.IdempotencyService
 
 	logger logger.Logger
 }
 
-func NewAuthHandler(service *AuthService, idempotencyService *idempotency.IdempotencyService, logger logger.Logger) *AuthHandler{
+func NewAuthHandler(service *AuthService, logger logger.Logger) *AuthHandler {
 	return &AuthHandler{
 		service: service,
-		idempotencyService: idempotencyService,
-		logger: logger,
+		logger:  logger,
 	}
 }
 
@@ -37,61 +36,92 @@ func (h *AuthHandler) RenderLogin(c *fiber.Ctx) error {
 	return c.Render("user/login", LoginPageData{Errors: map[string]string{}})
 }
 
+func (h *AuthHandler) renderRegisterForm(c *fiber.Ctx, pageData user.PageData, status int) error {
+	userAuthInfo, err := httpUtils.GetUserAuthInfo(c)
+	if err != nil {
+		return err
+	}
+	pageData.PageContext = page.PageContext{
+		UserAuthInfo:  userAuthInfo,
+		ActiveSection: "users",
+	}
+	if c.Get("HX-Request") == "true" {
+		status = fiber.StatusOK
+		return c.Status(status).Render("register-content", pageData)
+	}
+	return c.Status(status).Render("user/register", pageData)
+}
+
+func (h *AuthHandler) renderUsersPanel(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	users, err := h.service.userService.List(ctx)
+	if err != nil {
+		return err
+	}
+	userAuthInfo, err := httpUtils.GetUserAuthInfo(c)
+	if err != nil {
+		return err
+	}
+	pageData := user.TablePageData{
+		Users: user.ToTableResponses(users),
+		PageContext: page.PageContext{
+			UserAuthInfo:  userAuthInfo,
+			ActiveSection: "users",
+		},
+	}
+	if c.Get("HX-Request") == "true" {
+		return c.Render("users-content", pageData)
+	}
+	return c.Render("user/users", pageData)
+}
+
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	record := c.Locals("idempotency_record")
 	if record != nil {
-		c.Set("HX-Redirect", "/users")
+		c.Set("HX-Redirect", "/user_panel")
 		return c.SendStatus(200)
 	}
 
 	ctx := c.UserContext()
 
-	var req user.Request 
-	c.BodyParser(&req)
+	var req user.Request
+	if err := c.BodyParser(&req); err != nil {
+		return apperrors.NewBadRequestError(err, "")
+	}
 
 	errorMap := req.Validate()
 	if len(errorMap) > 0 {
-		res := user.ToResponseFromRequest(req)
-		pageData := user.PageData{
-			User:   res,
+		return h.renderRegisterForm(c, user.PageData{
+			User:   user.ToResponseFromRequest(req),
 			Errors: errorMap,
-		}
-		return c.Status(fiber.StatusBadRequest).Render("user/register", pageData)
+		}, fiber.StatusBadRequest)
 	}
 
 	userModel := user.ToModel(req)
 
-	id, err := h.service.Register(ctx, userModel, req.Password)
-	if err != nil {
-		if errors.Is(err, apperrors.ErrInvalidPermissions){
-			errorMap["resourceRoles"] = "Un admin debe tener permisos de editor en todos los recursos."
-		}
-		user.MapDBDuplicateError(err, errorMap)
-	}
-
 	idempotencyKey, ok := c.Locals("idempotency_key").(string)
-	if !ok{
+	if !ok {
 		return apperrors.NewInternalError(errors.New("invalid idempotency record type in context"), "")
 	}
 
-	err = h.idempotencyService.UpdateResource(ctx, idempotencyKey, "user", id)
+	_, err := h.service.Register(ctx, userModel, req.Password, idempotencyKey)
 	if err != nil {
+		errorMap = map[string]string{}
+		if errors.Is(err, apperrors.ErrInvalidPermissions) {
+			errorMap["resourceRoles"] = "Un admin debe tener permisos de editor en todos los recursos."
+		}
+		user.MapDBDuplicateError(err, errorMap)
+		if len(errorMap) > 0 {
+			return h.renderRegisterForm(c, user.PageData{
+				User:   user.ToResponseFromRequest(req),
+				Errors: errorMap,
+			}, fiber.StatusBadRequest)
+		}
 		return err
 	}
 
-	users, err := h.service.userService.List(ctx)
-	if err!=nil{
-		return err
-	}
-
-	res := user.ToTableResponses(users)
-
-	pageData := user.TablePageData{
-		Users:  res,
-		Errors: errorMap,
-	}
-
-	return c.Render("user/users", pageData)
+	c.Set("HX-Push-Url", "/user_panel")
+	return h.renderUsersPanel(c)
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
@@ -127,15 +157,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	refreshToken := c.Cookies("refresh_token")
-    
-    err := h.service.Logout(ctx, refreshToken)
-    if err != nil {
-        h.logger.Error("logout continued after refresh token revoke failed", "err", err)
-		// no retorno nada, dejo que se desloguee con clearCookies
-    }
-	
+
+	err := h.service.Logout(ctx, refreshToken)
+	if err != nil {
+		h.logger.Error("logout continued after refresh token revoke failed", "err", err)
+	}
+
 	clearCookies(c)
 
 	return c.Redirect("/login")
-
 }

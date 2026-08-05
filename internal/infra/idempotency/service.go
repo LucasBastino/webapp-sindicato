@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/jmoiron/sqlx"
 )
 
 type IdempotencyService struct {
@@ -42,8 +43,8 @@ func (s *IdempotencyService) CheckOrCreate(ctx context.Context, key string, requ
 	return nil, nil
 }
 
-func (s *IdempotencyService) UpdateResource(ctx context.Context, key string, resourceType string, resourceID int) error {
-	err := s.repo.UpdateResource(ctx, key, resourceType, resourceID)
+func (s *IdempotencyService) UpdateResource(ctx context.Context, tx *sqlx.Tx, key string, resourceType string, resourceID int) error {
+	err := s.repo.UpdateResource(ctx, tx, key, resourceType, resourceID)
 	if err != nil {
 		return apperrors.NewDatabaseError(err, "")
 	}

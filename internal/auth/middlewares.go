@@ -50,10 +50,11 @@ func (m *AuthMiddleware) VerifyToken(c *fiber.Ctx) error{
 		return m.handleRefresh(c)
 	}
 	userAuthInfo := userauthinfo.UserAuthInfo{
-		UserID: claims.Sub,
-        Admin:   claims.Admin,
-        ResourceRoles: claims.ResourceRoles,
-    }
+		UserID:        claims.Sub,
+		Username:      claims.Username,
+		Admin:         claims.Admin,
+		ResourceRoles: claims.ResourceRoles,
+	}
 	// envio los claims y userAuthInfo a locals y dejo pasar al siguiente middleware
 	c.Locals("claims", claims)
 	c.Locals("userAuthInfo", userAuthInfo)
@@ -80,10 +81,11 @@ func (m *AuthMiddleware) handleRefresh(c *fiber.Ctx) error {
     c.Cookie(&accessCookie)
 
 	userAuthInfo := userauthinfo.UserAuthInfo{
-		UserID: claims.Sub,
-        Admin:   claims.Admin,
-        ResourceRoles: claims.ResourceRoles,
-    }
+		UserID:        claims.Sub,
+		Username:      claims.Username,
+		Admin:         claims.Admin,
+		ResourceRoles: claims.ResourceRoles,
+	}
 
     c.Locals("claims", claims)
     c.Locals("userAuthInfo", userAuthInfo)

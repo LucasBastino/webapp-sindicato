@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -58,21 +57,17 @@ func (s *LicenseService) IsValid() bool {
 
 
 func (s *LicenseService) Check() (bool, error) {
-	
-	homeDir, err := os.UserHomeDir()
-	if err!=nil{
-		return false, err
+	licensePath := s.cfg.Path
+	if licensePath == "" {
+		licensePath = "./license.json"
 	}
-		
-	// licensePath := s.cfg.Path
-	// licensePath := os.Getenv("LICENSE_PATH")
-	// if licensePath == "" {
-	// 	licensePath = "Licencias/licencia.json" // fallback
-	// }
-	// todo: cambiar esto de filepath despues
-	filePath := filepath.Join(homeDir, "Desktop", "Licencias", "license.json")
-	fmt.Println(filePath)
-	file, err := os.ReadFile(filePath)
+
+	publicKeyPath := s.cfg.PublicKeyPath
+	if publicKeyPath == "" {
+		publicKeyPath = "./config/license/public.pem"
+	}
+
+	file, err := os.ReadFile(licensePath)
 	if err != nil {
 		return false, err
 	}
@@ -93,10 +88,7 @@ func (s *LicenseService) Check() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	keyPath := filepath.Join(homeDir, "Desktop", "Licencias", "public.pem")
-	fmt.Println(keyPath)
-	// keyPath := s.cfg.PublicKeyPath
-	publicKeyData, err := os.ReadFile(keyPath)
+	publicKeyData, err := os.ReadFile(publicKeyPath)
 	if err != nil {
 		return false, err
 	}

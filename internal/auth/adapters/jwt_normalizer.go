@@ -50,6 +50,11 @@ func (n JwtNormalizer) NormalizeClaims(jwtMapClaims any) *authdomain.AuthClaims{
 		iat = time.Unix(int64(iatVal), 0)
 	}
 
+	username, ok := claims["username"].(string)
+	if !ok {
+		username = ""
+	}
+
 	admin, ok := claims["admin"].(bool)
 	if !ok {
 		admin = false
@@ -60,10 +65,11 @@ func (n JwtNormalizer) NormalizeClaims(jwtMapClaims any) *authdomain.AuthClaims{
 	}
 
 	return &authdomain.AuthClaims{
-		Sub: sub,
-		Exp: exp,
-		Iat: iat,
-		Admin: admin,
+		Sub:           sub,
+		Exp:           exp,
+		Iat:           iat,
+		Username:      username,
+		Admin:         admin,
 		ResourceRoles: resourceRoles,
 	}
 }
@@ -71,10 +77,11 @@ func (n JwtNormalizer) NormalizeClaims(jwtMapClaims any) *authdomain.AuthClaims{
 func (n JwtNormalizer) DenormalizeClaims(defaultClaims authdomain.AuthClaims) any {
 	return jwt.MapClaims{
 		// hay que ponerle .Unix() para convertir el tipo time.Time a int64
-		"sub": defaultClaims.Sub,
-		"exp": defaultClaims.Exp.Unix(),
-		"iat": defaultClaims.Iat.Unix(), 
-		"admin": defaultClaims.Admin,
+		"sub":           defaultClaims.Sub,
+		"exp":           defaultClaims.Exp.Unix(),
+		"iat":           defaultClaims.Iat.Unix(),
+		"username":      defaultClaims.Username,
+		"admin":         defaultClaims.Admin,
 		"resourceRoles": defaultClaims.ResourceRoles,
 	}
 }

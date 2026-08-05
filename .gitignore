@@ -7,7 +7,6 @@
 # Keys / certs / licenses
 license.json
 *.pem
-!config/license/public.pem
 *.key
 *.p12
 *.pfx

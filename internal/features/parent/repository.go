@@ -55,25 +55,29 @@ func (r *ParentRepository) Count(ctx context.Context, memberID int) (int, error)
 }
 
 
-func (r *ParentRepository) Insert(ctx context.Context, parent Parent) (int, error) {
+func (r *ParentRepository) Insert(ctx context.Context, tx *sqlx.Tx, parent Parent) (int, error) {
 	query := `
 		INSERT INTO parents (
+		id_member,
 		name,
 		last_name,
 		relationship,
 		birthday,
 		gender,
 		cuil,
+		observations
 		)
 		VALUES (
+		:id_member,
 		:name,
 		:last_name,
 		:relationship,
 		:birthday,
 		:gender,
 		:cuil,
+		:observations
 		)`;
-	res, err := r.db.NamedExecContext(ctx, query, parent)
+	res, err := tx.NamedExecContext(ctx, query, parent)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert parent: %w", err)
 	}
@@ -84,7 +88,6 @@ func (r *ParentRepository) Insert(ctx context.Context, parent Parent) (int, erro
 	return int(id), nil
 }
 
-// no se puede editar id_member
 func (r *ParentRepository) Update(ctx context.Context, id int, parent Parent) error {
 	parent.ID = id
 	query := `
@@ -96,7 +99,8 @@ func (r *ParentRepository) Update(ctx context.Context, id int, parent Parent) er
     birthday = :birthday,
     gender = :gender,
     cuil = :cuil,
-	WHERE id_parent = :id_parent`;
+    observations = :observations
+	WHERE id_parent = :id_parent`
 	_, err := r.db.NamedExecContext(ctx, query, parent)
 	if err != nil {
 		return fmt.Errorf("failed to update parent: %w", err)
@@ -114,8 +118,8 @@ func (r *ParentRepository) HardDelete(ctx context.Context, id int) error {
 }
 
 
-func (r *ParentRepository) BeginTx() (*sqlx.Tx, error){
-	return r.db.Beginx()
+func (r *ParentRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error){
+	return r.db.BeginTxx(ctx, nil)
 }
 
 // func (r *ParentRepository) HardDeleteAllParentsByMember(ctx context.Context, memberID int) error{

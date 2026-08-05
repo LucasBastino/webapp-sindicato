@@ -32,6 +32,13 @@ type companyFilters struct{
 	statuses page.StatusFilters
 }
 
+type RecentCompany struct {
+	ID          int       `db:"id_company"`
+	Name        string    `db:"name"`
+	CreatedAt   time.Time `db:"created_at"`
+	MemberCount int       `db:"member_count"`
+}
+
 
 
 

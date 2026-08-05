@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 
+	"github.com/LucasBastino/app-sindicato/internal/common/functiontemplates"
 	"github.com/LucasBastino/app-sindicato/internal/config"
 	"github.com/LucasBastino/app-sindicato/internal/http/errorhandler"
 	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
@@ -14,6 +15,8 @@ import (
 func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error) {
 	
 	engine := html.New("./internal/views", ".html")
+	engine.AddFunc("formatAmountAR", functiontemplates.FormatAmountAR)
+	engine.AddFunc("formatAmountInput", functiontemplates.FormatAmountInput)
 	// engine := html.NewFileSystem(http.FS(viewFiles), ".html")
 	// engine := html.NewFileSystem(http.FS(embedfsSub(viewFiles, "src/views")), ".html")
 
@@ -21,7 +24,7 @@ func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error
 	services := buildServices(infra, cfg)
 	httpComponents := buildHTTPComponents(services, infra)
 	services.license.StartChecker()
-	startCron(services.payment, services.installment, services.backUp, services.idempotency, logger)
+	startCron(services.payment, services.backUp, services.idempotency, logger)
 
 	// chequeo si hay tablas creadas, sino creo todo desde cero
 	// aca no hace falta usar el adapter, son querys init faciles

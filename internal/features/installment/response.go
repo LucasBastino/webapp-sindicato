@@ -1,21 +1,23 @@
 package installment
 
 type response struct {
-	NumberOfInstallment int
-
-	Amount float32
-	Status string
-	PaidAt string
-
-	Observations string
-
-	UpdatedAt string
+	ID                int
+	PaymentPlanID     int
+	InstallmentNumber int
+	Amount            float32
+	Status            string
+	DueDate           string
+	PaidAt            string
+	IsPaid            bool
+	Observations      string
+	UpdatedAt         string
 }
 
 type gridResponse struct {
-	NumberOfInstallment int
-
-	Amount float32
-	Status string
-	PaidAt string
+	ID                int
+	InstallmentNumber int
+	Amount            float32
+	Status            string
+	DueDate           string
+	PaidAt            string
 }

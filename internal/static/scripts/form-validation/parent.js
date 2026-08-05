@@ -1,18 +1,16 @@
 import * as v from "./validators.js";
-import {validateForm} from "common.js"
+import { validateForm } from "./common.js";
 
-function validateParent(action){
-
+export function validateParent() {
     const fields = {
-        // no chequeo memberID porque el parent no puede cambiar de member
-        name: { id: "name", validate: validateNameOrLastName },
-        lastName: { id: "last-name", validate: validateNameOrLastName },
-        relationship: { id: "relationship", validate: validateRelationship },
-        birthday: { id: "birthday", validate: validateBirthday },
-        gender: { id: "gender", validate: validateGender },
-        cuil: { id: "cuil", validate: validateCuilCuit }
+        name:         { id: "name",         validate: v.validateNameOrLastName },
+        lastName:     { id: "last-name",    validate: v.validateNameOrLastName },
+        relationship: { id: "relationship", validate: v.validateRelationship },
+        birthday:     { id: "birthday",     validate: v.validateBirthday },
+        gender:       { id: "gender",       validate: v.validateGender },
+        cuil:         { id: "cuil",         validate: v.validateCuilCuit },
+        observations: { id: "observations", validate: v.validateObservations },
     };
 
-    validateForm(fields, "parent", action)
+    return validateForm(fields);
 }
-

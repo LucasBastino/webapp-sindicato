@@ -30,8 +30,7 @@
   lucide.createIcons();
 
   document.addEventListener('DOMContentLoaded', function() {
-    var btnAdd = document.getElementById('btn-add');
-    if (btnAdd) btnAdd.addEventListener('click', function() { window.location.href = '/members/new'; });
+    lucide.createIcons();
   });
 
   document.body.addEventListener('htmx:afterSwap', function() {
@@ -66,6 +65,31 @@
   lucide.createIcons();
 </script>
 
+    {{if .CompanyID}}
+    <div class="page-header affiliate-header">
+      <h1 class="title-sm">Afiliados de {{if .CompanyName}}{{.CompanyName}}{{else}}la empresa{{end}}</h1>
+      <div class="header-actions">
+        <button class="btn btn-secondary" type="button"
+                hx-get="/companies/{{.CompanyID}}"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="arrow-left"></i>
+          Ficha de la empresa
+        </button>
+        {{if ne (len .Members) 0}}
+        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+        <button class="btn btn-primary" type="button"
+                hx-get="/companies/{{.CompanyID}}/members/new"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="plus"></i>
+          Agregar afiliado
+        </button>
+        {{end}}
+        {{end}}
+      </div>
+    </div>
+    {{else}}
     <div class="table-header">
       <h1>Afiliados del sistema</h1>
       <div class="table-actions">
@@ -74,59 +98,87 @@
           <input type="text" id="search-input" name="search-key" form="members-filters"
                  placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
         </div>
-        <button class="btn btn-primary btn-add-table" id="btn-add" type="button">
+        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
+                hx-get="/members/new"
+                hx-target="#main-content"
+                hx-push-url="true">
           <i data-lucide="plus"></i>
           Agregar afiliado
         </button>
+        {{end}}
       </div>
     </div>
+    {{end}}
 
-    <form id="members-filters" class="status-filters"
-          hx-get="/members"
-          hx-target="#main-content"
-          hx-push-url="true"
-          hx-trigger="filterApply from:#members-filters, keyup changed delay:400ms from:#search-input"
-          hx-on::before-request="syncAllMembersFilters()">
-      <input type="hidden" name="show-active" id="show-active-hidden"
-             value="{{if .PageContext.StatusFilters.ShowActive}}true{{else}}false{{end}}">
-      <input type="hidden" name="show-inactive" id="show-inactive-hidden"
-             value="{{if .PageContext.StatusFilters.ShowInactive}}true{{else}}false{{end}}">
-      <input type="hidden" name="show-deleted" id="show-deleted-hidden"
-             value="{{if .PageContext.StatusFilters.ShowDeleted}}true{{else}}false{{end}}">
+    <div class="{{if .CompanyID}}table-toolbar{{end}}">
+      {{if .CompanyID}}
+      <div class="search-wrapper">
+        <i data-lucide="search"></i>
+        <input type="text" id="search-input" name="search-key" form="members-filters"
+               placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
+      </div>
+      {{end}}
 
-      <label class="status-filter-item">
-        <input type="checkbox" id="show-active-cb"
-               {{if .PageContext.StatusFilters.ShowActive}}checked{{end}}
-               onchange="onStatusFilterChange('show-active-cb', 'show-active-hidden', 'members-filters')">
-        Activos
-      </label>
-      <label class="status-filter-item">
-        <input type="checkbox" id="show-inactive-cb"
-               {{if .PageContext.StatusFilters.ShowInactive}}checked{{end}}
-               onchange="onStatusFilterChange('show-inactive-cb', 'show-inactive-hidden', 'members-filters')">
-        Inactivos
-      </label>
-      <label class="status-filter-item">
-        <input type="checkbox" id="show-deleted-cb"
-               {{if .PageContext.StatusFilters.ShowDeleted}}checked{{end}}
-               onchange="onStatusFilterChange('show-deleted-cb', 'show-deleted-hidden', 'members-filters')">
-        Eliminados
-      </label>
-    </form>
+      <form id="members-filters" class="status-filters"
+            {{if .CompanyID}}
+            hx-get="/companies/{{.CompanyID}}/members"
+            {{else}}
+            hx-get="/members"
+            {{end}}
+            hx-target="#members-table-results"
+            hx-select="#members-table-results"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            hx-trigger="filterApply from:#members-filters, keyup changed delay:400ms from:#search-input"
+            hx-on::before-request="syncAllMembersFilters()">
+        <input type="hidden" name="show-active" id="show-active-hidden"
+               value="{{if .PageContext.StatusFilters.ShowActive}}true{{else}}false{{end}}">
+        <input type="hidden" name="show-inactive" id="show-inactive-hidden"
+               value="{{if .PageContext.StatusFilters.ShowInactive}}true{{else}}false{{end}}">
+        <input type="hidden" name="show-deleted" id="show-deleted-hidden"
+               value="{{if .PageContext.StatusFilters.ShowDeleted}}true{{else}}false{{end}}">
 
-    <div class="card table-card">
+        <label class="status-filter-item">
+          <input type="checkbox" id="show-active-cb"
+                 {{if .PageContext.StatusFilters.ShowActive}}checked{{end}}
+                 onchange="onStatusFilterChange('show-active-cb', 'show-active-hidden', 'members-filters')">
+          Activos
+        </label>
+        <label class="status-filter-item">
+          <input type="checkbox" id="show-inactive-cb"
+                 {{if .PageContext.StatusFilters.ShowInactive}}checked{{end}}
+                 onchange="onStatusFilterChange('show-inactive-cb', 'show-inactive-hidden', 'members-filters')">
+          Inactivos
+        </label>
+        <label class="status-filter-item">
+          <input type="checkbox" id="show-deleted-cb"
+                 {{if .PageContext.StatusFilters.ShowDeleted}}checked{{end}}
+                 onchange="onStatusFilterChange('show-deleted-cb', 'show-deleted-hidden', 'members-filters')">
+          Eliminados
+        </label>
+      </form>
+    </div>
+
+    <div id="members-table-results" class="card table-card">
       {{if eq (len .Members) 0}}
         {{template "empty-state" .EmptyState}}
       {{else}}
       <div class="table-wrapper">
-        <table class="affiliate-table">
+        <table class="affiliate-table{{if .CompanyID}} company-members-table{{end}}">
           <thead>
             <tr>
-              <th>Afiliado</th>
-              <th>DNI</th>
-              <th>Empresa</th>
-              <th>Ficha</th>
-              <th>Acción</th>
+              <th class="col-name">Afiliado</th>
+              <th class="col-dni">DNI</th>
+              <th class="col-member-number">N° Afiliado</th>
+              {{if not .CompanyID}}
+              <th class="col-company">Empresa</th>
+              {{end}}
+              <th class="col-estado">Estado</th>
+              <th class="col-action">Ficha</th>
+              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+              <th class="col-action">Acción</th>
+              {{end}}
             </tr>
           </thead>
           <tbody id="affiliate-table-body">
@@ -134,7 +186,19 @@
             <tr {{if .IsDeleted}}class="row-deleted"{{else if .IsInactive}}class="row-inactive"{{end}}>
               <td class="col-name">{{.LastName}}, {{.Name}}</td>
               <td class="col-dni">{{.Dni}}</td>
+              <td class="col-member-number">{{.MemberNumber}}</td>
+              {{if not $.CompanyID}}
               <td class="col-company">{{.CompanyName}}</td>
+              {{end}}
+              <td class="col-estado">
+                {{if .IsDeleted}}
+                  <span class="row-badge deleted">Eliminado</span>
+                {{else if .IsInactive}}
+                  <span class="row-badge inactive">Inactivo</span>
+                {{else}}
+                  <span class="row-badge active">Activo</span>
+                {{end}}
+              </td>
               <td class="col-action">
                 <button class="table-btn blue" type="button"
                         hx-get="/members/{{.ID}}"
@@ -144,30 +208,43 @@
                   <i data-lucide="file-text"></i>
                 </button>
               </td>
+              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
               <td class="col-action">
                 {{if .IsDeleted}}
                 <button class="table-btn green" type="button"
+                        {{if $.CompanyID}}
+                        hx-post="/members/{{.ID}}/restore?company_id={{$.CompanyID}}"
+                        hx-headers='{"view": "table"}'
+                        {{else}}
                         hx-post="/members/{{.ID}}/restore"
                         hx-headers='{"view": "table"}'
+                        {{end}}
                         hx-include="#members-filters, #search-input"
                         hx-confirm="¿Estás seguro de restaurar este afiliado?"
-                        hx-target="#main-content"
-                        hx-swap="innerHTML"
+                        hx-target="#members-table-results"
+                        hx-select="#members-table-results"
+                        hx-swap="outerHTML"
                         title="Restaurar afiliado">
                   <i data-lucide="rotate-ccw"></i>
                 </button>
                 {{else}}
                 <button class="table-btn red" type="button"
+                        {{if $.CompanyID}}
+                        hx-delete="/members/{{.ID}}?company_id={{$.CompanyID}}"
+                        {{else}}
                         hx-delete="/members/{{.ID}}"
+                        {{end}}
                         hx-include="#members-filters, #search-input"
                         hx-confirm="¿Estás seguro de eliminar este afiliado?"
-                        hx-target="#main-content"
-                        hx-swap="innerHTML"
+                        hx-target="#members-table-results"
+                        hx-select="#members-table-results"
+                        hx-swap="outerHTML"
                         title="Eliminar afiliado">
                   <i data-lucide="trash-2"></i>
                 </button>
                 {{end}}
               </td>
+              {{end}}
             </tr>
             {{end}}
           </tbody>

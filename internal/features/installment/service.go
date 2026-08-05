@@ -3,102 +3,83 @@ package installment
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/jmoiron/sqlx"
 )
 
 type InstallmentService struct {
-	repo *InstallmentRepository
-	
+	repo                       *InstallmentRepository
 	paymentPlanStatusRefresher paymentPlanStatusRefresher
 }
 
 func NewInstallmentService(repo *InstallmentRepository) *InstallmentService {
-	return &InstallmentService{
-		repo: repo,
-	}
+	return &InstallmentService{repo: repo}
+}
+
+func (s *InstallmentService) SetPaymentPlanStatusRefresher(refresher paymentPlanStatusRefresher) {
+	s.paymentPlanStatusRefresher = refresher
 }
 
 func (s *InstallmentService) Get(ctx context.Context, id int) (*Installment, error) {
 	installment, err := s.repo.FindByID(ctx, id)
-	if err!=nil{
+	if err != nil {
 		return nil, apperrors.NewDatabaseError(err, "")
 	}
-
-	if installment == nil{
+	if installment == nil {
 		return nil, apperrors.NewNotFoundError(errors.New("installment not found"), "")
 	}
-
 	return installment, nil
+}
+
+func (s *InstallmentService) GetPaymentPlanStatus(ctx context.Context, paymentPlanID int) (string, error) {
+	if s.paymentPlanStatusRefresher == nil {
+		return "", apperrors.NewInternalError(errors.New("payment plan status refresher not configured"), "")
+	}
+	return s.paymentPlanStatusRefresher.GetStatus(ctx, paymentPlanID)
 }
 
 func (s *InstallmentService) List(ctx context.Context, paymentPlanID int) ([]Installment, error) {
 	installments, err := s.repo.FindAll(ctx, nil, paymentPlanID)
-	if err!=nil{
+	if err != nil {
 		return nil, apperrors.NewDatabaseError(err, "")
 	}
-
 	return installments, nil
 }
 
-func (s *InstallmentService) Create(ctx context.Context, paymentPlan paymentPlanData) error {
-	installments := buildInstallments(paymentPlan)
-
-	rows, err := s.repo.BulkInsert(ctx, installments)
-	if err!=nil{
-		return apperrors.NewDatabaseError(err, "")
-	}
-	if rows != len(installments){
-		return apperrors.NewBusinessError(errors.New("failed to bulk insert all installments: rows affected doesn't match with installments count"), "")
-	}
-
-	return nil
-}
-
 func (s *InstallmentService) Update(ctx context.Context, id int, installment Installment) error {
-	err := s.repo.Update(ctx, id, installment)
-	if err!=nil{
+	existing, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return apperrors.NewDatabaseError(err, "")
+	}
+	if existing == nil {
+		return apperrors.NewNotFoundError(errors.New("installment not found"), "")
+	}
+
+	if s.paymentPlanStatusRefresher == nil {
+		return apperrors.NewInternalError(errors.New("payment plan status refresher not configured"), "")
+	}
+	planStatus, err := s.paymentPlanStatusRefresher.GetStatus(ctx, existing.PaymentPlanID)
+	if err != nil {
+		return err
+	}
+	if planStatus == "cancelled" {
+		return apperrors.NewBusinessError(
+			errors.New("cannot edit installment of cancelled payment plan"),
+			"No se puede editar cuotas de un plan cancelado. Restaurá el plan primero.",
+		)
+	}
+
+	installment.PaymentPlanID = existing.PaymentPlanID
+	err = s.repo.Update(ctx, nil, id, installment)
+	if err != nil {
 		return apperrors.NewDatabaseError(err, "")
 	}
 
-	return s.paymentPlanStatusRefresher.RefreshStatus(ctx, installment.PaymentPlanID)
+	return s.paymentPlanStatusRefresher.RefreshStatus(ctx, existing.PaymentPlanID)
 }
 
-func (s *InstallmentService) CheckStatusDaily(ctx context.Context) error {
-	err := s.repo.CheckStatusDaily(ctx)
-	if err!=nil{
-		return apperrors.NewDatabaseError(err, "")
-	}
-
-	return nil
-}
-
-
-func buildInstallments(paymentPlan paymentPlanData) []Installment {
-	var installments []Installment
-
-	for i:=0; i < paymentPlan.numberOfInstallments; i++ {
-		baseDay := paymentPlan.firstDueDate.Day()
-		month := paymentPlan.firstDueDate.Month()
-		year := paymentPlan.firstDueDate.Year()
-		lastDay := daysInMonth(year, month)
-		day := baseDay
-		if baseDay > lastDay{
-			day = lastDay
-		}
-		amount := paymentPlan.amount / float32(paymentPlan.numberOfInstallments)
-		dueDate := time.Date(year, month, day, 0, 0, 0, 0 , time.UTC)
-		installments = append(installments, Installment{
-			PaymentPlanID: paymentPlan.id,
-			InstallmentNumber: i+1 ,
-			Amount: amount,
-			DueDate: dueDate,
-		})
-	}
-	return installments
-}
-
-func daysInMonth(year int, month time.Month) int {
-	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+// UpdateInTx is used when the caller already owns a transaction.
+func (s *InstallmentService) UpdateInTx(ctx context.Context, tx *sqlx.Tx, id int, installment Installment) error {
+	return s.repo.Update(ctx, tx, id, installment)
 }

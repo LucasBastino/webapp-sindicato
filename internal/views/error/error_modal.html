@@ -14,20 +14,28 @@
 
 <body class="modal-page modal-error">
 
-<div class="modal-overlay" id="modal-overlay">
+{{template "error-modal" .}}
+
+</body>
+</html>
+
+{{define "error-modal"}}
+<div class="modal-page modal-error">
+<div class="modal-overlay show" id="modal-overlay"
+     onclick="if(event.target===this) closeModal()">
 
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="error-title" aria-describedby="error-description">
 
-    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
+    <button class="modal-close" type="button" onclick="closeModal()" aria-label="Cerrar">
       <i data-lucide="x"></i>
     </button>
 
     <div class="error-icon" aria-hidden="true">!</div>
 
-    <h3 id="error-title">No se pudo guardar</h3>
+    <h3 id="error-title">{{if .errorTitle}}{{.errorTitle}}{{else}}No se pudo completar{{end}}</h3>
 
     <p class="error-description" id="error-description">
-      Ocurrió un error al procesar la solicitud. Por favor, intentá nuevamente en unos segundos.
+      {{if .errorMsg}}{{.errorMsg}}{{else}}Ocurrió un error al procesar la solicitud. Por favor, intentá nuevamente en unos segundos.{{end}}
     </p>
 
     <div class="info-box">
@@ -45,20 +53,28 @@
   </div>
 
 </div>
+</div>
 
 <script>
   lucide.createIcons();
 
-  function closeModal() {
-    const overlay = document.getElementById('modal-overlay');
-    overlay.style.display = 'none';
-  }
+  var goToDashboard = {{if .goToDashboard}}true{{else}}false{{end}};
 
-  document.getElementById('modal-overlay').addEventListener('click', function(e) {
-    if (e.target === this) {
-      closeModal();
+  function closeModal() {
+    if (goToDashboard) {
+      window.location.href = "/dashboard";
+      return;
     }
-  });
+    var container = document.getElementById('app-modal-container');
+    if (container) {
+      container.innerHTML = '';
+      return;
+    }
+    var overlay = document.getElementById('modal-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  }
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
@@ -77,6 +93,4 @@
     document.getElementById('error-description').textContent = message;
   }
 </script>
-
-</body>
-</html>
+{{end}}

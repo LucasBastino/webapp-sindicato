@@ -26,6 +26,13 @@ export function isNotLongerThan(input, limit){
     return { valid: true, error: ""}
 }
 
+export function hasAtLeast(input, limit){
+    if (input.length<limit){
+        return { valid: false, error: `Debe contener al menos ${limit} caracteres.` }
+    }
+    return { valid: true, error: ""}
+}
+
 export function isNumeric(input){
     let validChars = "0123456789"
     return isValidCharacter(input, validChars)

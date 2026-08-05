@@ -29,6 +29,9 @@ type response struct {
 	UpdatedAt string
 
 	CompanyName string
+
+	IsDeleted  bool
+	IsInactive bool
 }
 
 type tableResponse struct {

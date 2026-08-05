@@ -21,12 +21,9 @@ type passwordRequest struct{
 }
 
 type permissionsRequest struct {
-	Admin      string `form:"admin"`
-	
-	Member     string `form:"member"`
+	Admin   string `form:"admin"`
+	Member  string `form:"member"`
 	Company string `form:"company"`
-	Parent     string `form:"parent"`
-	Payment    string `form:"payment"`
 }
 
 
@@ -37,7 +34,7 @@ func (req Request) Validate() map[string]string{
 		errorMap["username"] = err
 	}
 
-	maps.Copy(errorMap, req.passwordRequest.Validate())
+	maps.Copy(errorMap, req.passwordRequest.Validate(false))
 	
 	maps.Copy(errorMap, req.permissionsRequest.Validate())
 
@@ -45,20 +42,27 @@ func (req Request) Validate() map[string]string{
 	return errorMap
 }
 
-func (req passwordRequest) Validate() map[string]string{
+func (req passwordRequest) Validate(requireCurrent bool) map[string]string{
 	errorMap := map[string]string{}
+
+	if requireCurrent {
+		if req.CurrentPassword == "" {
+			errorMap["current_password"] = "Campo requerido."
+		}
+	}
 
 	if err := v.ValidatePassword(req.Password); err != "" {
 		errorMap["password"] = err
 	}
+	if req.ConfirmPassword == "" {
+		errorMap["confirm_password"] = "Campo requerido."
+		return errorMap
 
-	if req.CurrentPassword == req.Password{
-		errorMap["password"] = "Debes ingresar una contraseña distinta a la actual."
-	}
-
-	if req.Password != req.ConfirmPassword{
+	} else if req.Password != req.ConfirmPassword {
 		errorMap["confirm_password"] = "Las contraseñas no coinciden."
+		errorMap["password"] = "Las contraseñas no coinciden."
 	}
+
 	return errorMap
 }
 
@@ -77,9 +81,6 @@ func (req permissionsRequest) Validate() map[string]string{
 		errorMap["company"] = err
 	}
 
-	if err := v.ValidatePermissions(req.Payment); err != "" {
-		errorMap["payment"] = err
-	}
 	return errorMap
 }
 

@@ -17,6 +17,8 @@ type response struct {
 
 	CreatedAt string
 	UpdatedAt string
+
+	IsDeleted bool
 }
 
 type tableResponse struct {

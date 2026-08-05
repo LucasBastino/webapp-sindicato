@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -32,7 +33,7 @@ func (r *PaymentRepository) FindByID(ctx context.Context, id int) (*Payment, err
 }
 
 func (r *PaymentRepository) FindAll(ctx context.Context, companyID int, year int) ([]Payment, error) {
-	query := "SELECT * FROM payments WHERE year = ? AND id_company = ? ORDER BY month DESC";
+	query := "SELECT * FROM payments WHERE year = ? AND id_company = ? ORDER BY month ASC";
 	var payments []Payment
 	err := r.db.SelectContext(ctx, &payments, query, year, companyID)
 	if err != nil {
@@ -61,16 +62,162 @@ func (r *PaymentRepository) Count(ctx context.Context, companyID int) (int, erro
 	return totalRows, nil
 }
 
+type OverdueSummary struct {
+	Count  int     `db:"count"`
+	Amount float32 `db:"amount"`
+}
+
+func (r *PaymentRepository) CountOverdueSummary(ctx context.Context) (OverdueSummary, error) {
+	query := `
+		SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS amount
+		FROM payments
+		WHERE paid_at IS NULL
+		  AND is_in_payment_plan = false
+		  AND due_date < CURDATE()
+	`
+	var summary OverdueSummary
+	err := r.db.GetContext(ctx, &summary, query)
+	if err != nil {
+		return OverdueSummary{}, fmt.Errorf("failed to count overdue payments: %w", err)
+	}
+	return summary, nil
+}
+
+type overdueRow struct {
+	ID          int       `db:"id_payment"`
+	CompanyID   int       `db:"id_company"`
+	CompanyName string    `db:"company_name"`
+	Month       int       `db:"month"`
+	Year        int       `db:"year"`
+	DueDate     time.Time `db:"due_date"`
+	Amount      *float32  `db:"amount"`
+}
+
+func (r *PaymentRepository) FindAllOverdue(ctx context.Context) ([]overdueRow, error) {
+	query := `
+		SELECT
+			P.id_payment,
+			P.id_company,
+			C.name AS company_name,
+			P.month,
+			P.year,
+			P.due_date,
+			P.amount
+		FROM payments P
+		INNER JOIN companies C ON P.id_company = C.id_company
+		WHERE P.paid_at IS NULL
+		  AND P.is_in_payment_plan = false
+		  AND P.due_date < CURDATE()
+		  AND C.deleted_at IS NULL
+		ORDER BY C.name ASC, P.due_date ASC
+	`
+	var rows []overdueRow
+	err := r.db.SelectContext(ctx, &rows, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch overdue payments: %w", err)
+	}
+	return rows, nil
+}
+
+func (r *PaymentRepository) FindOverdueByCompany(ctx context.Context, companyID int) ([]Payment, error) {
+	query := `
+		SELECT *
+		FROM payments
+		WHERE id_company = ?
+		  AND paid_at IS NULL
+		  AND is_in_payment_plan = false
+		  AND due_date < CURDATE()
+		ORDER BY due_date ASC, month ASC
+	`
+	var payments []Payment
+	err := r.db.SelectContext(ctx, &payments, query, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch overdue payments by company: %w", err)
+	}
+	return payments, nil
+}
+
+func (r *PaymentRepository) FindByIDs(ctx context.Context, ids []int) ([]Payment, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	query, args, err := sqlx.In(`SELECT * FROM payments WHERE id_payment IN (?)`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build find-by-ids query: %w", err)
+	}
+	query = r.db.Rebind(query)
+	var payments []Payment
+	err = r.db.SelectContext(ctx, &payments, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch payments by ids: %w", err)
+	}
+	return payments, nil
+}
+
+func (r *PaymentRepository) BulkUpdateIsInPaymentPlan(ctx context.Context, tx *sqlx.Tx, ids []int, inPlan bool) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	query, args, err := sqlx.In(`UPDATE payments SET is_in_payment_plan = ? WHERE id_payment IN (?)`, inPlan, ids)
+	if err != nil {
+		return 0, fmt.Errorf("failed to build bulk is_in_payment_plan query: %w", err)
+	}
+	query = r.db.Rebind(query)
+	var res sql.Result
+	if tx != nil {
+		res, err = tx.ExecContext(ctx, query, args...)
+	} else {
+		res, err = r.db.ExecContext(ctx, query, args...)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to bulk update is_in_payment_plan: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected while bulk updating is_in_payment_plan: %w", err)
+	}
+	return int(rows), nil
+}
+
+func (r *PaymentRepository) BulkMarkCompleted(ctx context.Context, tx *sqlx.Tx, ids []int, paidAt time.Time) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	query, args, err := sqlx.In(`
+		UPDATE payments
+		SET paid_at = ?, is_in_payment_plan = false
+		WHERE id_payment IN (?)
+	`, paidAt, ids)
+	if err != nil {
+		return 0, fmt.Errorf("failed to build bulk mark completed query: %w", err)
+	}
+	query = r.db.Rebind(query)
+	var res sql.Result
+	if tx != nil {
+		res, err = tx.ExecContext(ctx, query, args...)
+	} else {
+		res, err = r.db.ExecContext(ctx, query, args...)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to bulk mark payments completed: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected while bulk marking payments completed: %w", err)
+	}
+	return int(rows), nil
+}
+
 
 // Use INSERT IGNORE to skip duplicates payments
 // Also skip softdeleted companies with condition WHERE 
 func (r *PaymentRepository) BulkInsert(ctx context.Context, tx *sqlx.Tx, payments []Payment) error {
-	query := "INSERT IGNORE INTO payments (id_company, month, year) VALUES"
+	query := "INSERT IGNORE INTO payments (id_company, month, year, due_date, observations) VALUES"
 	placeholders := make([]string, 0, len(payments))
-	args := make([]any, 0, len(payments))
+	args := make([]any, 0, len(payments)*5)
 	for _, p := range payments{
-		placeholders = append(placeholders, " (?, ?, ?)")
-		args = append(args, p.CompanyID, p.Month, p.Year)
+		placeholders = append(placeholders, " (?, ?, ?, ?, ?)")
+		args = append(args, p.CompanyID, p.Month, p.Year, p.DueDate, "")
 	}
 
 	query += strings.Join(placeholders, ",")
@@ -94,7 +241,6 @@ func (r *PaymentRepository) Update(ctx context.Context, id int, payment Payment)
 		UPDATE payments P
 		INNER JOIN companies C ON P.id_company = C.id_company
 		SET 
-			P.status = :status, 
 			P.amount = :amount, 
 			P.paid_at = :paid_at, 
 			P.observations = :observations 
@@ -105,138 +251,7 @@ func (r *PaymentRepository) Update(ctx context.Context, id int, payment Payment)
 	if err != nil {
 		return fmt.Errorf("failed to update payment: %w", err)
 	}
-	return  nil
-}
-
-func (r *PaymentRepository) BulkUpdateStatus(ctx context.Context, tx *sqlx.Tx, ids string, status string) (int, error) {
-	
-	query := `
-	UPDATE installments
-	SET status = ?
-	WHERE id IN 
-	`
-	// se que la cantidad de "?" va a ser exactamente la cantidad de ids, asi que ya lo voy creando
-	placeholders := make([]string, len(ids))
-	// lo mismo para los args, solo que se le suma el arg status, por eso +1
-	args := make([]any, 0, len(ids)+1)
-
-	args = append(args, status)
-
-	for i, id := range ids {
-		placeholders[i] = "?"
-		args = append(args, id)
-	}
-
-	query+= " (" + strings.Join(placeholders, ",") + ")"
-
-	res, err := tx.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, fmt.Errorf("failed to bulk update installments: %w", err)
-	}
-	
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get rows affected while bulk updating installments: %w", err)
-	}
-	return int(rows), nil
-
-}
-
-func (r *PaymentRepository) CheckStatusMonthly(ctx context.Context) error {
-	query := `
-	UPDATE payments
-	SET
-		status = 'overdue'
-	WHERE
-		status = 'pending'
-	AND
-		DAY(CURDATE()) > 15
-	`
-	_, err := r.db.ExecContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("failed to execute monthly payments update: %w", err)
-	}
 	return nil
 }
 
-// func (r *PaymentRepository) Insert(ctx context.Context, payment Payment) (int64, error) {
-// 	query := `
-// 	INSERT INTO payment 
-// 	(month,
-// 	year,
-// 	status, 
-// 	amount, 
-// 	paid_at, 
-// 	observations,
-// 	id_company)
-// 	VALUES (:month, :year, :status, :amount, :paid_at, :observations, :id_company)`;
-// 	res, err := r.db.NamedExecContext(ctx, query, payment)
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to insert payment: %w", err)
-// 	}
-// 	id, err := res.LastInsertId()
-// 	if err!=nil{
-// 		return 0, fmt.Errorf("failed to get last insert id of payment: %w", err)
-// 	}
-// 	return id, nil
-// }
 
-
-
-// func (r *PaymentRepository) HardDeleteAllPaymentsByCompany(ctx context.Context, companyID int) (int64, error) {
-// 	query := "DELETE FROM payments WHERE id_company = ?"
-// 	res, err := r.db.ExecContext(ctx, query, companyID)
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to hard delete payments: %w", err)
-// 	}
-// 	rows, err := res.RowsAffected()
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to get rows affected while hard deleting payments: %w", err)
-// 	}
-	
-// 	return rows, nil
-// }
-
-
-
-
-
-
-
-
-// func (r *PaymentRepository) Exists(ctx context.Context, id int) (bool, error){
-// 	query := "SELECT EXISTS (SELECT 1 FROM payments WHERE id_payment = ?)"
-// 	var exists bool
-// 	err := r.db.GetContext(ctx, &exists, query, id)
-// 	if err!=nil{
-// 		return false, fmt.Errorf("failed to check if member exists: %w", err)
-// 	}
-// 	return exists, nil
-// }
-
-// func (r *PaymentRepository) ValidateInDB(ctx context.Context, companyID int) map[string]string{
-// 	errorMap := map[string]string{}
-// 	if err := r.validateCompanyID(ctx, companyID); err!=""{
-// 		errorMap["companyID"] = err
-// 	}
-// 	return errorMap
-// }
-
-// func (r *PaymentRepository) validateCompanyID(ctx context.Context, companyID int) string{
-
-// 	var dummy int
-// 	query := "SELECT 1 FROM companies WHERE id_company = ?";
-// 	err := r.db.GetContext(ctx, &dummy, query, companyID)
-// 	if err!=nil{
-// 		if errors.Is(err, sql.ErrNoRows){
-// 			return "Empresa no existente."
-// 		}
-// 		return "Ocurrió un error con el campo."
-
-// 	}
-// 	return ""
-// }
-
-// func (r *PaymentRepository) BeginTx() (*sqlx.Tx, error){
-// 	return r.db.Beginx()
-// }

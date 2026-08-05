@@ -27,7 +27,7 @@ type Member struct {
 	MemberNumber  string    `db:"member_number"`
 	Cuil          *string    `db:"cuil"`
 	Category      string    `db:"category"`
-	EntryDate     time.Time `db:"entry_date"`
+	EntryDate     *time.Time `db:"entry_date"`
 
 	Observations  string    `db:"observations"`
 

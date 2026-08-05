@@ -11,13 +11,17 @@ type pageData struct {
 }
 
 type gridPageData struct {
-	Payments       []gridResponse
-
+	Payments    []gridResponse
+	Stats       gridStats
 	CompanyID   int
 	CompanyName string
+	Year        int
+	Years       []int
+	PageContext page.PageContext
+}
 
-	Year           int
-	Years          []int
-	
-	PageContext    page.PageContext
+type overduePageData struct {
+	Groups      []OverdueCompanyGroup
+	EmptyState  page.EmptyState
+	PageContext page.PageContext
 }

@@ -1,28 +1,26 @@
 import * as v from "./validators.js";
-import {validateForm} from "common.js"
+import { validateForm } from "./common.js";
 
-function validateMember(action){
-  const fields = {
-        name: { id: "name", validate: validateNameOrLastName },
-        lastName: { id: "last-name", validate: validateNameOrLastName },
-        dni: { id: "dni", validate: validateDni },
-        birthday: { id: "birthday", validate: validateBirthday },
-        gender: { id: "gender", validate: validateGender },
-        maritalStatus: { id: "marital-status", validate: validateMaritalStatus },
-        phone: { id: "phone", validate: validatePhone },
-        email: { id: "email", validate: validateEmail },
-        address: { id: "address", validate: validateAddress },
-        postalCode: { id: "postal-code", validate: validatePostalCode },
-        district: { id: "district", validate: validateDistrict },
-        memberNumber: { id: "member-number", validate: validateMemberNumber },
-        // chequeo companyID porque el afiliado puede cambiar de empresa
-        companyID: { id: "company-id", validate: validateCompanyID },
-        cuil: { id: "cuil", validate: validateCuilCuit },
-        category: { id: "category", validate: validateCategory },
-        entryDate: { id: "entry-date", validate: validateEntryDate },
-        observations: { id: "observations", validate: validateObservations },
+export function validateMember() {
+    const fields = {
+        name:          { id: "name",           validate: v.validateNameOrLastName },
+        lastName:      { id: "last-name",      validate: v.validateNameOrLastName },
+        dni:           { id: "dni",            validate: v.validateDni },
+        birthday:      { id: "birthday",       validate: v.validateBirthday },
+        gender:        { id: "gender",         validate: v.validateGender },
+        maritalStatus: { id: "marital-status", validate: v.validateMaritalStatus },
+        phone:         { id: "phone",          validate: v.validatePhone },
+        email:         { id: "email",          validate: v.validateEmail },
+        address:       { id: "address",        validate: v.validateAddress },
+        postalCode:    { id: "postal-code",    validate: v.validatePostalCode },
+        district:      { id: "district",       validate: v.validateDistrict },
+        memberNumber:  { id: "member-number",  validate: v.validateMemberNumber },
+        companyID:     { id: "company-id",     validate: v.validateCompanyID },
+        cuil:          { id: "cuil",           validate: v.validateCuilCuit },
+        category:      { id: "category",       validate: v.validateCategory },
+        entryDate:     { id: "entry-date",     validate: v.validateEntryDate },
+        observations:  { id: "observations",   validate: v.validateObservations },
     };
 
-    validateForm(fields, "member", action)
+    return validateForm(fields);
 }
-

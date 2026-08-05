@@ -3,6 +3,7 @@ package company
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
@@ -14,15 +15,13 @@ import (
 
 type CompanyHandler struct{
 	service *CompanyService
-	idempotencyService *idempotency.IdempotencyService
 
 	normalizer authports.ClaimsNormalizer
 }
 
-func NewCompanyHandler(service *CompanyService, idempotencyService *idempotency.IdempotencyService, normalizer authports.ClaimsNormalizer) *CompanyHandler{
+func NewCompanyHandler(service *CompanyService, normalizer authports.ClaimsNormalizer) *CompanyHandler{
 	return &CompanyHandler{
 		service: service,
-		idempotencyService: idempotencyService,
 		normalizer: normalizer,
 	}
 }
@@ -52,8 +51,11 @@ func (h *CompanyHandler) renderPageByID(c *fiber.Ctx, id int) error{
 	res := toResponse(*company)
 	
 	pageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "edit", ActiveSection: "companies"}
-	pageData := pageData{Company: res, PageContext: pageContext}
-	pageData.WithPaymentTable = false
+	pageData := pageData{
+		Company:          res,
+		PageContext:      pageContext,
+		WithPaymentTable: false,
+	}
 
 	if c.Get("HX-Request") == "true" {
 		return c.Render("company-content", pageData)
@@ -79,7 +81,7 @@ func (h *CompanyHandler) renderDefaultTable(c *fiber.Ctx) error{
 		return err
 	}
 
-	searchKey := httpUtils.GetSearchKey(c)
+	searchKey := strings.TrimSpace(httpUtils.GetSearchKey(c))
 	statusFilters := httpUtils.GetStatusFilters(c)
 
 	filters := companyFilters{
@@ -104,7 +106,11 @@ func (h *CompanyHandler) renderDefaultTable(c *fiber.Ctx) error{
 	var emptyState page.EmptyState
 
 	if totalRows == 0 {
-		emptyState = page.NewEmptyState("building-2", "empresas", "/companies/new", "Agregar empresa")
+		if searchKey == "" && userAuthInfo.CanEdit("company") && statusFilters.ShowActive {
+			emptyState = page.NewEmptyState("building-2", "empresas", "/companies/new", "Agregar empresa")
+		} else {
+			emptyState = page.NewNoResultsEmptyState("building-2", "empresas")
+		}
 	} else {
 		currentPage := httpUtils.GetPageByQueryParam(c)
 		pagination := page.BuildPagination(currentPage, totalRows)
@@ -159,8 +165,18 @@ func (h *CompanyHandler) RenderAddForm(c *fiber.Ctx) error {
 	}
 	// le paso un company vacio para que los campos del form aparezcan vacios
 	pageData := pageData{
-		Company: response{},
+		Company:     response{},
 		PageContext: page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: "companies"},
+	}
+	return h.renderCompanyPage(c, pageData, 0)
+}
+
+func (h *CompanyHandler) renderCompanyPage(c *fiber.Ctx, pageData pageData, status int) error {
+	if status != 0 {
+		c.Status(status)
+	}
+	if c.Get("HX-Request") == "true" {
+		return c.Render("company-content", pageData)
 	}
 	return c.Render("company/company", pageData)
 }
@@ -199,10 +215,9 @@ func (h *CompanyHandler) Create(c *fiber.Ctx) error {
 	errorMap := req.validate()
 	if len(errorMap) > 0 {
 		res := toResponseFromRequest(req)
-		
 		pageContext := page.PageContext{
-			UserAuthInfo: userAuthInfo,
-			Mode:         "create",
+			UserAuthInfo:  userAuthInfo,
+			Mode:          "add",
 			ActiveSection: "companies",
 		}
 		pageData := pageData{
@@ -210,7 +225,11 @@ func (h *CompanyHandler) Create(c *fiber.Ctx) error {
 			PageContext: pageContext,
 			Errors:      errorMap,
 		}
-		return c.Status(fiber.StatusBadRequest).Render("company/company", pageData)
+		status := fiber.StatusBadRequest
+		if c.Get("HX-Request") == "true" {
+			status = fiber.StatusOK
+		}
+		return h.renderCompanyPage(c, pageData, status)
 	}
 
 
@@ -218,16 +237,20 @@ func (h *CompanyHandler) Create(c *fiber.Ctx) error {
 	company := toModel(req)
 
 	// lo inserto en la DB y lo retorno con mas datos (id, timestamps)
-	id, err := h.service.Create(ctx, company)
+	idempotencyKey, ok := c.Locals("idempotency_key").(string)
+	if !ok{
+		return apperrors.NewInternalError(errors.New("invalid idempotency record type in context"), "")
+	}
+
+	id, err := h.service.Create(ctx, company, idempotencyKey)
 	if err!=nil{
 		// chequeo duplicados
 		mapDBDuplicateError(err, errorMap)
 		if len(errorMap) > 0 {
 			res := toResponseFromRequest(req)
-
 			pageContext := page.PageContext{
-				UserAuthInfo: userAuthInfo,
-				Mode:         "create",
+				UserAuthInfo:  userAuthInfo,
+				Mode:          "add",
 				ActiveSection: "companies",
 			}
 			pageData := pageData{
@@ -235,22 +258,11 @@ func (h *CompanyHandler) Create(c *fiber.Ctx) error {
 				PageContext: pageContext,
 				Errors:      errorMap,
 			}
-			
-			return c.Status(fiber.StatusConflict).Render("company/company", pageData)
+			return h.renderCompanyPage(c, pageData, fiber.StatusConflict)
 		}
 		return err
 	}	
 	
-
-	idempotencyKey, ok := c.Locals("idempotency_key").(string)
-	if !ok{
-		return apperrors.NewInternalError(errors.New("invalid idempotency record type in context"), "")
-	}
-	
-	err = h.idempotencyService.UpdateResource(ctx, idempotencyKey, "company", id)
-	if err != nil {
-		return err
-	}
 
 	/* // lo paso a res
 	companyRes := modelToRes(modelFromDB)
@@ -303,7 +315,7 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 			Errors:      errorMap,
 		}
 
-		return c.Status(fiber.StatusBadRequest).Render("company/company", pageData)
+		return h.renderCompanyPage(c, pageData, fiber.StatusBadRequest)
 	}
 
 	company := toModel(req)
@@ -324,7 +336,7 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 				Errors:      errorMap,
 			}
 
-			return c.Status(fiber.StatusConflict).Render("company/company", pageData)
+			return h.renderCompanyPage(c, pageData, fiber.StatusConflict)
 		}
 		return err
 	}	

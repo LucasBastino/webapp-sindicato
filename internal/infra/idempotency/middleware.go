@@ -39,7 +39,7 @@ func (m *IdempotencyMiddleware) VerifyIdempotency(c *fiber.Ctx) error {
 		c.Locals("idempotency_record", record)
 	}
 
-	c.Locals("idempotency_key", record.IdempotencyKey)
+	c.Locals("idempotency_key", key)
 	return c.Next()
 }
 

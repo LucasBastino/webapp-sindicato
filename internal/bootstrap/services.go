@@ -39,17 +39,20 @@ type services struct {
 func buildServices(infra *infra, cfg config.Config) *services {
 	licenseService := license.NewLicenseService(infra.logger, cfg.License)
 
+	idempotencyRepo := idempotency.NewIdempotencyRepository(infra.db)
+	idempotencyService := idempotency.NewIdempotencyService(idempotencyRepo, 24*time.Hour)
+
 	userRepo := user.NewUserRepository(infra.db)
-	userService := user.NewUserService(userRepo, infra.hasher)
+	userService := user.NewUserService(userRepo, infra.hasher, idempotencyService)
 
 	authRepo := auth.NewAuthRepository(infra.db)
 	authService := auth.NewAuthService(authRepo, userService, infra.hasher, infra.tokenGen, cfg.Auth)
 
 	parentRepo := parent.NewParentRepository(infra.db)
-	parentService := parent.NewParentService(parentRepo)
+	parentService := parent.NewParentService(parentRepo, idempotencyService)
 
 	memberRepo := member.NewMemberRepository(infra.db)
-	memberService := member.NewMemberService(memberRepo)
+	memberService := member.NewMemberService(memberRepo, idempotencyService)
 
 	paymentRepo := payment.NewPaymentRepository(infra.db)
 	paymentService := payment.NewPaymentService(paymentRepo)
@@ -58,16 +61,15 @@ func buildServices(infra *infra, cfg config.Config) *services {
 	installmentService := installment.NewInstallmentService(installmentRepo)
 
 	paymentPlanRepo := paymentplan.NewPaymentPlanRepository(infra.db)
-	paymentPlanService := paymentplan.NewPaymentPlanService(paymentPlanRepo, paymentRepo, installmentRepo, infra.logger)
+	paymentPlanService := paymentplan.NewPaymentPlanService(paymentPlanRepo, paymentRepo, installmentRepo, idempotencyService, infra.logger)
+	installmentService.SetPaymentPlanStatusRefresher(paymentPlanService)
 
 	companyRepo := company.NewCompanyRepository(infra.db)
-	companyService := company.NewCompanyService(companyRepo, paymentService)
+	companyService := company.NewCompanyService(companyRepo, paymentService, idempotencyService)
+	paymentService.SetCompanyReader(companyService)
 
 	backUpRepo := backup.NewBackUpRepository(infra.db)
 	backUpService := backup.NewBackUpService(backUpRepo)
-
-	idempotencyRepo := idempotency.NewIdempotencyRepository(infra.db)
-	idempotencyService := idempotency.NewIdempotencyService(idempotencyRepo, 24*time.Hour)
 
 	return &services{
 		auth:	    	authService,

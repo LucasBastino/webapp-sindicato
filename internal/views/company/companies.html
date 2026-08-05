@@ -29,11 +29,6 @@
 <script>
   lucide.createIcons();
 
-  document.addEventListener('DOMContentLoaded', function() {
-    var btnAdd = document.getElementById('btn-add');
-    if (btnAdd) btnAdd.addEventListener('click', function() { window.location.href = '/companies/new'; });
-  });
-
   document.body.addEventListener('htmx:afterSwap', function() {
     lucide.createIcons();
   });
@@ -73,16 +68,23 @@
           <input type="text" id="search-input" name="search-key" form="companies-filters"
                  placeholder="Buscar empresas..." value="{{.PageContext.SearchKey}}">
         </div>
-        <button class="btn btn-primary btn-add-table" id="btn-add" type="button">
+        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
+                hx-get="/companies/new"
+                hx-target="#main-content"
+                hx-push-url="true">
           <i data-lucide="plus"></i>
           Agregar empresa
         </button>
+        {{end}}
       </div>
     </div>
 
     <form id="companies-filters" class="status-filters"
           hx-get="/companies"
-          hx-target="#main-content"
+          hx-target="#companies-table-results"
+          hx-select="#companies-table-results"
+          hx-swap="outerHTML"
           hx-push-url="true"
           hx-trigger="filterApply from:#companies-filters, keyup changed delay:400ms from:#search-input"
           hx-on::before-request="syncAllCompaniesFilters()">
@@ -105,27 +107,37 @@
       </label>
     </form>
 
-    <div class="card table-card">
+    <div id="companies-table-results" class="card table-card">
       {{if eq (len .Companies) 0}}
         {{template "empty-state" .EmptyState}}
       {{else}}
       <div class="table-wrapper">
-        <table class="affiliate-table">
+        <table class="affiliate-table" id="companies-table">
           <thead>
             <tr>
-              <th>Empresa</th>
-              <th>N° Empresa</th>
-              <th>Dirección</th>
+              <th class="col-c-name">Empresa</th>
+              <th class="col-c-number">N° Empresa</th>
+              <th class="col-c-address">Dirección</th>
+              <th class="col-estado">Estado</th>
               <th>Ficha</th>
+              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
               <th>Acción</th>
+              {{end}}
             </tr>
           </thead>
           <tbody id="company-table-body">
             {{range .Companies}}
             <tr {{if .IsDeleted}}class="row-deleted"{{end}}>
-              <td class="col-name">{{.Name}}</td>
-              <td class="col-dni">{{.CompanyNumber}}</td>
-              <td class="col-company">{{.Address}}</td>
+              <td class="col-c-name">{{.Name}}</td>
+              <td class="col-c-number">{{.CompanyNumber}}</td>
+              <td class="col-c-address">{{.Address}}</td>
+              <td class="col-estado">
+                {{if .IsDeleted}}
+                  <span class="row-badge deleted">Eliminada</span>
+                {{else}}
+                  <span class="row-badge active">Activa</span>
+                {{end}}
+              </td>
               <td class="col-action">
                 <button class="table-btn blue" type="button"
                         hx-get="/companies/{{.ID}}"
@@ -135,6 +147,7 @@
                   <i data-lucide="file-text"></i>
                 </button>
               </td>
+              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
               <td class="col-action">
                 {{if .IsDeleted}}
                 <button class="table-btn green" type="button"
@@ -142,8 +155,9 @@
                         hx-headers='{"view": "table"}'
                         hx-include="#companies-filters, #search-input"
                         hx-confirm="¿Estás seguro de restaurar esta empresa?"
-                        hx-target="#main-content"
-                        hx-swap="innerHTML"
+                        hx-target="#companies-table-results"
+                        hx-select="#companies-table-results"
+                        hx-swap="outerHTML"
                         title="Restaurar empresa">
                   <i data-lucide="rotate-ccw"></i>
                 </button>
@@ -152,13 +166,15 @@
                         hx-delete="/companies/{{.ID}}/"
                         hx-include="#companies-filters, #search-input"
                         hx-confirm="¿Estás seguro de eliminar esta empresa?"
-                        hx-target="#main-content"
-                        hx-swap="innerHTML"
+                        hx-target="#companies-table-results"
+                        hx-select="#companies-table-results"
+                        hx-swap="outerHTML"
                         title="Eliminar empresa">
                   <i data-lucide="trash-2"></i>
                 </button>
                 {{end}}
               </td>
+              {{end}}
             </tr>
             {{end}}
           </tbody>
@@ -169,4 +185,11 @@
 
     {{template "pagination" .PageContext}}
 
+{{end}}
+
+{{define "companyTableSelect"}}
+<option value="">Seleccionar empresa</option>
+{{range .Companies}}
+<option value="{{.ID}}">{{.Name}}</option>
+{{end}}
 {{end}}

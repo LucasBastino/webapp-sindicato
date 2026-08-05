@@ -1,4 +1,4 @@
-package validationFuncs
+package validation
 
 import (
 	"fmt"
@@ -28,6 +28,13 @@ func hasXLength(input string, length int) string {
 func isNotLongerThan(input string, limit int) string {
 	if len(input) > limit {
 		return fmt.Sprintf("No puede contener mas de %d caracteres.", limit)
+	}
+	return ""
+}
+
+func hasAtLeast(input string, limit int) string {
+	if len(input) < limit {
+		return fmt.Sprintf("Debe contener al menos %d caracteres.", limit)
 	}
 	return ""
 }
@@ -80,7 +87,7 @@ func isValidOption(input string, optionsSet map[string]struct{}) string {
 }
 
 func isValidDate(input string, min, max time.Time) string {
-	date, err := time.Parse("02/01/2006", input)
+	date, err := ParseDMY(input)
 	if err != nil {
 		return "Fecha no válida."
 	}
@@ -88,6 +95,11 @@ func isValidDate(input string, min, max time.Time) string {
 		return "Fecha no válida."
 	}
 	return ""
+}
+
+// ParseDMY accepts 1 or 2 digit day/month (5/6/2026 and 05/06/2026).
+func ParseDMY(input string) (time.Time, error) {
+	return time.Parse("2/1/2006", strings.TrimSpace(input))
 }
 
 // func isBoolean(input string) string {

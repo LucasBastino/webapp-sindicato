@@ -52,21 +52,22 @@ type authModule struct {
 func buildHTTPComponents(services *services, app *infra) *httpComponents{
 	
 	authMiddleware := auth.NewAuthMiddleware(services.auth, services.license)
-	authHandler := auth.NewAuthHandler(services.auth, services.idempotency, app.logger)
+	authHandler := auth.NewAuthHandler(services.auth, app.logger)
 	licenseHandler := license.NewLicenseHandler(services.license)
 
 	userHandler := user.NewUserHandler(services.user)
 
-	companyHandler := company.NewCompanyHandler(services.company, services.idempotency, app.normalizer)
-	memberHandler := member.NewMemberHandler(services.member, services.idempotency, app.normalizer)
-	parentHandler := parent.NewParentHandler(services.parent, services.idempotency, app.normalizer)
+	companyHandler := company.NewCompanyHandler(services.company, app.normalizer)
+	memberHandler := member.NewMemberHandler(services.member, services.company, app.normalizer)
+	parentHandler := parent.NewParentHandler(services.parent, services.member, app.normalizer)
 
 	paymentHandler := payment.NewPaymentHandler(services.payment, app.normalizer)
-	paymentPlanHandler := paymentplan.NewPaymentPlanHandler(services.paymentPlan, services.idempotency)
+	paymentPlanHandler := paymentplan.NewPaymentPlanHandler(services.paymentPlan)
 	installmentHandler := installment.NewInstallmentHandler(services.installment)
 	
 	backUpHandler := backup.NewBackUpHandler(services.backUp, app.logger)
-	pagesHandler := pages.NewPagesHandler()
+	dashboardService := pages.NewDashboardService(services.member, services.company, services.payment, services.paymentPlan)
+	pagesHandler := pages.NewPagesHandler(dashboardService)
 
 	idempotencyMiddleware := idempotency.NewIdempotencyMiddleware(services.idempotency)
 

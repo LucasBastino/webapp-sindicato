@@ -3,34 +3,23 @@ package installment
 import "time"
 
 type Installment struct {
-	ID                	int
-	PaymentPlanID     	int
-	
-	InstallmentNumber 	int
-	Amount              float32
-	DueDate      		time.Time
-	PaidAt				*time.Time
-
-	Observations      	string
-
-	UpdatedAt			time.Time
+	ID                int        `db:"id_installment"`
+	PaymentPlanID     int        `db:"id_payment_plan"`
+	InstallmentNumber int        `db:"installment_number"`
+	Amount            float32    `db:"amount"`
+	DueDate           time.Time  `db:"due_date"`
+	PaidAt            *time.Time `db:"paid_at"`
+	Observations      string     `db:"observations"`
+	UpdatedAt         time.Time  `db:"updated_at"`
 }
 
-type paymentPlanData struct {
-	id int
-	numberOfInstallments int
-	amount float32
-	firstDueDate time.Time
-}
 
-func (i Installment) GetStatus() string{
+func (i Installment) GetStatus() string {
 	if i.PaidAt != nil {
 		return "Completado"
-	} else {
-		if time.Now().After(i.DueDate) {
-			return "Vencido"
-		} else{
-			return "Pendiente"
-		}
 	}
+	if time.Now().After(i.DueDate) {
+		return "Vencido"
+	}
+	return "Pendiente"
 }

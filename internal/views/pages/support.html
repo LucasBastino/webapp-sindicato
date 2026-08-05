@@ -27,11 +27,14 @@
 
 {{define "support-content"}}
 <div class="backdrop-card"></div>
+{{template "support-modal" .}}
+{{end}}
 
+{{define "support-modal"}}
 <div class="support-overlay" id="support-overlay" role="presentation">
   <div class="support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title">
 
-    <button type="button" class="support-close" onclick="closeModal()" aria-label="Cerrar">
+    <button type="button" class="support-close" onclick="closeSupportModal()" aria-label="Cerrar">
       <i data-lucide="x"></i>
     </button>
 
@@ -90,7 +93,14 @@
 <script>
   lucide.createIcons();
 
-  function closeModal() {
+  function closeSupportModal() {
+    var overlay = document.getElementById('support-overlay');
+    var container = document.getElementById('app-modal-container');
+    document.removeEventListener('keydown', onSupportEscape);
+    if (container && overlay && container.contains(overlay)) {
+      container.innerHTML = '';
+      return;
+    }
     if (window.history.length > 1) {
       window.history.back();
     } else {
@@ -98,13 +108,14 @@
     }
   }
 
+  function onSupportEscape(e) {
+    if (e.key === 'Escape') closeSupportModal();
+  }
+
   document.getElementById('support-overlay').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
+    if (e.target === this) closeSupportModal();
   });
 
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
-  });
+  document.addEventListener('keydown', onSupportEscape);
 </script>
-
 {{end}}

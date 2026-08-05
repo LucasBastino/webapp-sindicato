@@ -14,10 +14,11 @@ func ToResponseFromRequest(req Request) Response {
 	admin, roles := req.ToPermissions()
 
 	return Response{
-		Username:      req.Username,
-		Password:      req.Password,
-		Admin:         admin,
-		ResourceRoles: roles,
+		Username:        req.Username,
+		Password:        req.Password,
+		ConfirmPassword: req.ConfirmPassword,
+		Admin:           admin,
+		ResourceRoles:   roles,
 	}
 }
 
@@ -39,6 +40,7 @@ func ToPermissionsResponseFromRequest(req permissionsRequest) permissionsRespons
 
 func ToTableResponse(u User) TableResponse {
 	return TableResponse{
+		ID:        u.ID,
 		Username:  u.Username,
 		Admin:     u.Admin,
 		CreatedAt: u.CreatedAt.Format("02/01/2006"),
@@ -54,14 +56,19 @@ func ToTableResponses(users []User) []TableResponse {
 }
 
 func (req permissionsRequest) ToPermissions() (bool, map[string]any) {
-
 	admin := req.Admin == "on"
 
+	member := req.Member
+	company := req.Company
+
+	if admin {
+		member = "editor"
+		company = "editor"
+	}
+
 	roles := map[string]any{
-		"member":  req.Member,
-		"company": req.Company,
-		"parent":  req.Parent,
-		"payment": req.Payment,
+		"member":  member,
+		"company": company,
 	}
 
 	return admin, roles

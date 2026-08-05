@@ -1,11 +1,20 @@
 package user
 
 type Response struct {
-	Username string
-	Password string
+	Username        string
+	Password        string
+	ConfirmPassword string
 
 	Admin         bool
 	ResourceRoles map[string]any
+}
+
+func (r Response) Role(resource string) string {
+	if r.ResourceRoles == nil {
+		return ""
+	}
+	v, _ := r.ResourceRoles[resource].(string)
+	return v
 }
 
 type passwordResponse struct {
@@ -20,6 +29,7 @@ type permissionsResponse struct {
 }
 
 type TableResponse struct {
+	ID        int
 	Username  string
 	Admin     bool
 	CreatedAt string

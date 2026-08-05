@@ -6,10 +6,14 @@
   <h3 class="empty-state-title">{{.Title}}</h3>
   <p class="empty-state-description">{{.Description}}</p>
   {{if .ActionHref}}
-  <a href="{{.ActionHref}}" class="btn btn-primary">
+  <button type="button" class="btn btn-primary"
+          hx-get="{{.ActionHref}}"
+          hx-target="#main-content"
+          hx-swap="innerHTML"
+          hx-push-url="true">
     <i data-lucide="plus"></i>
     {{.ActionLabel}}
-  </a>
+  </button>
   {{end}}
 </div>
 {{end}}

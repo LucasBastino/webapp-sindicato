@@ -1,550 +1,332 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Plan de Pago</title>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan de pago</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="/static/css/styles.css">
-
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
-
 <body>
-
-<div class="layout">
-
-  {{template "sidebar" .PageContext}}
-
-  <main class="content" id="main-content">
-    {{template "payment-plan-content" .}}
-  </main>
-
-</div>
+  <div class="layout">
+    {{template "sidebar" .PageContext}}
+    <main class="content" id="main-content">
+      {{template "payment-plan-content" .}}
+    </main>
+  </div>
 </body>
 </html>
 
 {{define "payment-plan-content"}}
+<div id="payment-plan-refresh"
+     hx-get="/payment_plans/{{.PaymentPlan.ID}}"
+     hx-trigger="paymentPlanUpdated from:body"
+     hx-target="#main-content"
+     hx-swap="innerHTML swap:120ms settle:120ms"
+     style="display:none"></div>
 
-    <div class="page-header affiliate-header">
-      <div>
-        <h1>Plan de pago - Constructora Norte S.A.</h1>
-        <p>Detalle del acuerdo de regularización</p>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-secondary" onclick="goBack()">
-          <i data-lucide="arrow-left"></i>
-          Volver a pagos
-        </button>
-      </div>
-    </div>
-
-    <div class="affiliate-grid">
-
-      <div class="affiliate-main">
-
-        <!-- RESUMEN DEL PLAN -->
-
-        <div class="card">
-          <h3>Resumen del plan</h3>
-
-          <div class="plan-summary">
-
-            <div class="plan-summary-left">
-
-              <div class="plan-detail-item">
-                <span class="detail-label">N° de plan</span>
-                <span class="detail-value">PP-00045</span>
-              </div>
-
-              <div class="plan-detail-item">
-                <span class="detail-label">Estado</span>
-                <span class="status active">Activa</span>
-              </div>
-
-              <div class="plan-detail-item">
-                <span class="detail-label">Fecha de inicio</span>
-                <span class="detail-value with-icon">
-                  <i data-lucide="calendar"></i>
-                  15/02/2024
-                </span>
-              </div>
-
-              <div class="plan-detail-item">
-                <span class="detail-label">Fecha fin estimada</span>
-                <span class="detail-value with-icon">
-                  <i data-lucide="calendar"></i>
-                  15/02/2025
-                </span>
-              </div>
-
-              <div class="plan-detail-item">
-                <span class="detail-label">Deuda original</span>
-                <span class="detail-value">$ 15.000.000</span>
-              </div>
-
-              <div class="plan-detail-item">
-                <span class="detail-label">Monto total del plan</span>
-                <span class="detail-value">$ 18.000.000</span>
-              </div>
-
-            </div>
-
-            <div class="plan-summary-right">
-
-              <div class="plan-stat">
-                <div class="stat-circle green">
-                  <i data-lucide="check"></i>
-                </div>
-                <div class="stat-info">
-                  <span>Cuotas pagas</span>
-                  <strong>6 / 12</strong>
-                  <small>50% del plan</small>
-                </div>
-              </div>
-
-              <div class="plan-stat">
-                <div class="stat-circle gray">
-                  <i data-lucide="clock"></i>
-                </div>
-                <div class="stat-info">
-                  <span>Cuotas pendientes</span>
-                  <strong>3</strong>
-                  <small>25% del plan</small>
-                </div>
-              </div>
-
-              <div class="plan-stat">
-                <div class="stat-circle red">
-                  <i data-lucide="alert-circle"></i>
-                </div>
-                <div class="stat-info">
-                  <span>Cuotas vencidas</span>
-                  <strong>1</strong>
-                  <small>8.33% del plan</small>
-                </div>
-              </div>
-
-              <div class="plan-stat">
-                <div class="stat-circle blue">
-                  <i data-lucide="dollar-sign"></i>
-                </div>
-                <div class="stat-info">
-                  <span>Total pagado</span>
-                  <strong>$ 9.000.000</strong>
-                  <small>50% del total</small>
-                </div>
-              </div>
-
-              <div class="plan-stat">
-                <div class="stat-circle orange">
-                  <i data-lucide="calendar"></i>
-                </div>
-                <div class="stat-info">
-                  <span>Próximo vencimiento</span>
-                  <strong>15/08/2024</strong>
-                  <small>En 12 días</small>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-
-        <!-- CUOTAS DEL PLAN -->
-
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3>Cuotas del plan</h3>
-              <p class="card-subtitle">Hacé clic en una cuota para ver el detalle de pagos, intereses y comprobantes.</p>
-            </div>
-          </div>
-
-          <div class="installments-grid">
-
-            <div class="installment-card" onclick="openInstallmentModal(1, 'Pagada', '$ 1.500.000', '15/02/2024', '15/03/2024')">
-              <div class="installment-header">
-                <h4>Cuota 1</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/03/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(2, 'Pagada', '$ 1.500.000', '15/03/2024', '15/04/2024')">
-              <div class="installment-header">
-                <h4>Cuota 2</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/04/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(3, 'Pagada', '$ 1.500.000', '15/04/2024', '15/05/2024')">
-              <div class="installment-header">
-                <h4>Cuota 3</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/05/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(4, 'Pagada', '$ 1.500.000', '15/05/2024', '15/06/2024')">
-              <div class="installment-header">
-                <h4>Cuota 4</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/06/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(5, 'Pagada', '$ 1.500.000', '15/06/2024', '15/07/2024')">
-              <div class="installment-header">
-                <h4>Cuota 5</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/07/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(6, 'Pagada', '$ 1.500.000', '15/07/2024', '15/08/2024')">
-              <div class="installment-header">
-                <h4>Cuota 6</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot green"></span>
-                <span class="green">Pagada</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">15/08/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(7, 'Vencida', '$ 1.500.000', '15/08/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 7</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot red"></span>
-                <span class="red">Vencida</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date red">Venció hace 12 días</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(8, 'Pendiente', '$ 1.500.000', '15/08/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 8</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot gray"></span>
-                <span class="gray">Pendiente</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">Vence el 15/08/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(9, 'Pendiente', '$ 1.500.000', '15/09/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 9</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot gray"></span>
-                <span class="gray">Pendiente</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">Vence el 15/09/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(10, 'Pendiente', '$ 1.500.000', '15/10/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 10</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot gray"></span>
-                <span class="gray">Pendiente</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">Vence el 15/10/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(11, 'Pendiente', '$ 1.500.000', '15/11/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 11</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot gray"></span>
-                <span class="gray">Pendiente</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">Vence el 15/11/2024</p>
-            </div>
-
-            <div class="installment-card" onclick="openInstallmentModal(12, 'Pendiente', '$ 1.500.000', '15/12/2024', '')">
-              <div class="installment-header">
-                <h4>Cuota 12</h4>
-              </div>
-              <div class="installment-status">
-                <span class="status-dot gray"></span>
-                <span class="gray">Pendiente</span>
-              </div>
-              <p class="installment-amount">$ 1.500.000</p>
-              <p class="installment-date">Vence el 15/12/2024</p>
-            </div>
-
-          </div>
-        </div>
-
-        <button class="btn-outline" onclick="goToPaymentPlans()">
-          <i data-lucide="file-text"></i>
-          Ver planes anteriores
-          <i data-lucide="arrow-right"></i>
-        </button>
-
-      </div>
-
-      <aside class="affiliate-sidebar">
-
-        <div class="card profile-card">
-          <div class="profile-avatar">
-            <i data-lucide="building-2"></i>
-          </div>
-          <h3>Constructora Norte S.A.</h3>
-          <div class="profile-meta">
-            <span>N° de empresa</span>
-            <strong>EMP-001234</strong>
-          </div>
-          <div class="status active">Activa</div>
-          <div class="status-divider"></div>
-          <div class="profile-meta">
-            <span>Afiliados</span>
-            <strong>128</strong>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Gestión</h3>
-          <div class="action-item" onclick="goToAffiliates()">
-            <i data-lucide="users"></i>
-            Ver afiliados
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
-          <div class="action-item" onclick="goToPayments()">
-            <i data-lucide="file-text"></i>
-            Ver pagos
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
-          <div class="action-item" onclick="goToCompanyDetail()">
-            <i data-lucide="building-2"></i>
-            Ver ficha
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Acciones</h3>
-          <button class="action-btn blue">
-            <i data-lucide="download"></i>
-            Descargar pagos
-          </button>
-          <button class="action-btn blue">
-            <i data-lucide="printer"></i>
-            Imprimir pagos
-          </button>
-          <button class="action-btn red" onclick="showCancelModal()">
-            <i data-lucide="x-circle"></i>
-            Cancelar plan
-          </button>
-        </div>
-
-      </aside>
-
-    </div>
-
-<!-- INSTALLMENT DETAIL MODAL -->
-
-<div class="modal-overlay" id="installment-modal">
-  <div class="modal installment-modal">
-    <div class="installment-modal-header">
-      <h3 id="modal-installment-title">Cuota 1</h3>
-      <button class="modal-close" onclick="closeInstallmentModal()" aria-label="Cerrar">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-
-    <div class="installment-detail-grid">
-      <div class="installment-detail-item">
-        <label>Estado</label>
-        <strong id="modal-status">Pagada</strong>
-      </div>
-      <div class="installment-detail-item">
-        <label>Monto</label>
-        <strong id="modal-amount">$ 1.500.000</strong>
-      </div>
-      <div class="installment-detail-item">
-        <label>Fecha de vencimiento</label>
-        <strong id="modal-due-date">15/03/2024</strong>
-      </div>
-      <div class="installment-detail-item">
-        <label>Fecha de pago</label>
-        <strong id="modal-paid-date">15/03/2024</strong>
-      </div>
-    </div>
-
-    <div class="installment-detail-divider"></div>
-
-    <div class="installment-detail-section">
-      <h4>Intereses</h4>
-      <div class="installment-detail-grid">
-        <div class="installment-detail-item">
-          <label>Interés mensual</label>
-          <strong>2.5%</strong>
-        </div>
-        <div class="installment-detail-item">
-          <label>Monto con interés</label>
-          <strong>$ 1.537.500</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="installment-detail-divider"></div>
-
-    <div class="installment-detail-section">
-      <h4>Comprobantes</h4>
-      <div class="receipt-list">
-        <div class="receipt-item">
-          <i data-lucide="file-text"></i>
-          <span>Comprobante_pago_cuota_1.pdf</span>
-          <small>2.4 MB</small>
-        </div>
-        <div class="receipt-item">
-          <i data-lucide="image"></i>
-          <span>Transferencia_bancaria.jpg</span>
-          <small>1.1 MB</small>
-        </div>
-      </div>
-    </div>
+<div class="page-header affiliate-header payment-plan-print-header">
+  <div>
+    <h1>Plan de pago - {{.PaymentPlan.CompanyName}}</h1>
+    <p>Detalle del acuerdo de regularización</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" type="button"
+            hx-get="/companies/{{.PaymentPlan.CompanyID}}/payment_plans"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="arrow-left"></i>
+      Planes de la empresa
+    </button>
+    <button class="btn btn-secondary" type="button"
+            hx-get="/companies/{{.PaymentPlan.CompanyID}}/payments"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="file-text"></i>
+      Ver pagos
+    </button>
+    <button class="btn btn-secondary print-action" type="button" onclick="window.print()">
+      <i data-lucide="printer"></i>
+      Imprimir
+    </button>
   </div>
 </div>
 
-<!-- CANCEL PLAN MODAL -->
+<div class="payment-plan-print">
+  <div class="affiliate-grid">
+    <div class="affiliate-main">
+      <section class="card">
+        <h3>Resumen del plan</h3>
+        <div class="plan-summary">
+          <div class="plan-summary-left">
+            <div class="plan-detail-item">
+              <span class="detail-label">N° de plan</span>
+              <span class="detail-value">PP-{{printf "%05d" .PaymentPlan.ID}}</span>
+            </div>
+            <div class="plan-detail-item">
+              <span class="detail-label">Estado</span>
+              <span class="status {{if eq .PaymentPlan.Status "completed"}}active{{else if eq .PaymentPlan.Status "cancelled"}}cancelled{{else}}pending{{end}}">
+                {{.PaymentPlan.StatusLabel}}
+              </span>
+            </div>
+            <div class="plan-detail-item">
+              <span class="detail-label">Fecha de inicio</span>
+              <span class="detail-value with-icon">
+                <i data-lucide="calendar"></i>
+                {{.PaymentPlan.FirstDueDate}}
+              </span>
+            </div>
+            <div class="plan-detail-item">
+              <span class="detail-label">Fecha fin estimada</span>
+              <span class="detail-value with-icon">
+                <i data-lucide="calendar"></i>
+                {{.PaymentPlan.LastDueDate}}
+              </span>
+            </div>
+            <div class="plan-detail-item">
+              <span class="detail-label">Deuda original</span>
+              <span class="detail-value">$ {{formatAmountAR .PaymentPlan.OriginalDebt}}</span>
+            </div>
+            <div class="plan-detail-item">
+              <span class="detail-label">Monto acordado</span>
+              <span class="detail-value">$ {{formatAmountAR .PaymentPlan.Amount}}</span>
+            </div>
+            <div class="plan-detail-item">
+              <button type="button" class="btn btn-secondary" id="open-included-payments-btn">
+                <i data-lucide="list"></i>
+                Pagos incluidos
+              </button>
+            </div>
+          </div>
 
-<div class="modal-overlay" id="cancel-modal">
-  <div class="modal">
-    <h3>Cancelar plan</h3>
-    <p>¿Estás seguro de cancelar este plan de pago? Esta acción no se puede deshacer.</p>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="hideCancelModal()">Cancelar</button>
-      <button class="btn btn-danger" onclick="confirmCancel()">Cancelar plan</button>
+          <div class="plan-summary-right">
+            <div class="plan-stat">
+              <div class="stat-circle green"><i data-lucide="check"></i></div>
+              <div class="stat-info">
+                <span>Cuotas pagas</span>
+                <strong>{{.PaymentPlan.PaidCount}} / {{.PaymentPlan.NumberOfInstallments}}</strong>
+              </div>
+            </div>
+            <div class="plan-stat">
+              <div class="stat-circle gray"><i data-lucide="clock"></i></div>
+              <div class="stat-info">
+                <span>Cuotas pendientes</span>
+                <strong>{{.PaymentPlan.PendingCount}}</strong>
+              </div>
+            </div>
+            <div class="plan-stat">
+              <div class="stat-circle red"><i data-lucide="alert-circle"></i></div>
+              <div class="stat-info">
+                <span>Cuotas vencidas</span>
+                <strong>{{.PaymentPlan.OverdueCount}}</strong>
+              </div>
+            </div>
+            <div class="plan-stat">
+              <div class="stat-circle blue"><i data-lucide="dollar-sign"></i></div>
+              <div class="stat-info">
+                <span>Total pagado</span>
+                <strong>$ {{formatAmountAR .PaymentPlan.TotalPaid}}</strong>
+              </div>
+            </div>
+            <div class="plan-stat">
+              <div class="stat-circle orange"><i data-lucide="calendar"></i></div>
+              <div class="stat-info">
+                <span>Próximo vencimiento</span>
+                <strong>{{if .PaymentPlan.HasNextDueDate}}{{.PaymentPlan.NextDueDate}}{{else}}Sin cuotas próximas{{end}}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <template id="included-payments-modal-src">
+        <div class="modal-page modal-form-modal">
+          <div class="modal-overlay show" id="included-payments-modal-overlay"
+               onclick="if(event.target===this) document.getElementById('app-modal-container').innerHTML=''">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="included-payments-modal-title"
+                 id="included-payments-modal">
+              <div class="modal-header">
+                <h3 id="included-payments-modal-title">Pagos incluidos</h3>
+                <button class="modal-close" type="button" aria-label="Cerrar"
+                        onclick="document.getElementById('app-modal-container').innerHTML=''">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+              <p class="card-subtitle" style="margin:0 0 16px;">Deuda original que se regularizó con este acuerdo.</p>
+              {{if eq (len .PaymentPlan.IncludedPayments) 0}}
+              <p class="helper-text">No hay pagos asociados.</p>
+              {{else}}
+              <table class="included-payments-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{range .PaymentPlan.IncludedPayments}}
+                  <tr>
+                    <td>{{.MonthName}} {{.Year}}</td>
+                    <td>$ {{formatAmountAR .Amount}}</td>
+                  </tr>
+                  {{end}}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total</td>
+                    <td>$ {{formatAmountAR .PaymentPlan.OriginalDebt}}</td>
+                  </tr>
+                </tfoot>
+              </table>
+              {{end}}
+              <button type="button" class="btn-submit"
+                      onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h3>Cuotas del plan</h3>
+            <p class="card-subtitle">Seleccioná una cuota para consultar o actualizar sus datos.</p>
+          </div>
+        </div>
+
+        <div class="installments-grid">
+          {{range .PaymentPlan.Installments}}
+          <div class="monthly-card {{if eq .StatusClass "green"}}green-bg{{else if eq .StatusClass "red"}}red-bg{{else}}gray-bg{{end}}"
+               style="cursor:pointer;"
+               hx-get="/installments/{{.ID}}"
+               hx-target="#app-modal-container"
+               hx-swap="innerHTML">
+            <h3>Cuota {{.InstallmentNumber}}</h3>
+            <div class="monthly-status">
+              <div class="status-icon {{.StatusClass}}">
+                {{if eq .StatusClass "green"}}
+                <i data-lucide="check"></i>
+                {{else if eq .StatusClass "red"}}
+                <i data-lucide="alert-circle"></i>
+                {{else}}
+                <i data-lucide="clock"></i>
+                {{end}}
+              </div>
+              <span class="status-text {{.StatusClass}}">{{.Status}}</span>
+            </div>
+            <p class="monthly-amount"><span class="money" data-amount="{{printf "%.2f" .Amount}}"></span></p>
+            <p class="monthly-date{{if eq .StatusClass "red"}} red{{end}}">{{.DateLabel}}</p>
+          </div>
+          {{end}}
+        </div>
+      </section>
     </div>
+
+    <aside class="affiliate-sidebar">
+      <section class="card profile-card">
+        <div class="profile-avatar"><i data-lucide="building-2"></i></div>
+        <h3>{{.PaymentPlan.CompanyName}}</h3>
+        <button class="action-btn blue" type="button"
+                hx-get="/companies/{{.PaymentPlan.CompanyID}}"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="building-2"></i>
+          Ver ficha de la empresa
+        </button>
+        <button class="action-btn blue" type="button"
+                hx-get="/companies/{{.PaymentPlan.CompanyID}}/members?show-active=true"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="users"></i>
+          Ver afiliados
+        </button>
+        <button class="action-btn blue" type="button"
+                hx-get="/companies/{{.PaymentPlan.CompanyID}}/payments"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="file-text"></i>
+          Ver pagos
+        </button>
+      </section>
+
+      {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+      <section class="card plan-management-actions">
+        <h3>Gestión</h3>
+        {{if eq .PaymentPlan.Status "pending"}}
+        <button class="action-btn red" type="button"
+                hx-post="/payment_plans/{{.PaymentPlan.ID}}/cancel"
+                hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+                hx-target="#main-content"
+                hx-swap="innerHTML">
+          <i data-lucide="x-circle"></i>
+          Cancelar plan
+        </button>
+        {{else if eq .PaymentPlan.Status "cancelled"}}
+        <button class="action-btn green" type="button"
+                hx-post="/payment_plans/{{.PaymentPlan.ID}}/restore"
+                hx-confirm="¿Estás seguro de restaurar este plan de pago?"
+                hx-target="#main-content"
+                hx-swap="innerHTML">
+          <i data-lucide="rotate-ccw"></i>
+          Restaurar plan
+        </button>
+        <button class="action-btn red" type="button"
+                hx-delete="/payment_plans/{{.PaymentPlan.ID}}/permanent"
+                hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+                hx-target="#main-content"
+                hx-swap="innerHTML">
+          <i data-lucide="trash-2"></i>
+          Eliminar
+        </button>
+        {{end}}
+      </section>
+      {{end}}
+    </aside>
   </div>
+
+  <section class="card plan-observations">
+    <h3>Observaciones</h3>
+    {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+    <form hx-put="/payment_plans/{{.PaymentPlan.ID}}"
+          hx-target="#main-content"
+          hx-swap="innerHTML">
+      <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
+        <div class="textarea-wrapper">
+          <textarea name="observations" maxlength="300"
+                    placeholder="Sin observaciones">{{.PaymentPlan.Observations}}</textarea>
+        </div>
+        <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
+      </div>
+      <button type="submit" class="btn btn-primary">Guardar</button>
+    </form>
+    {{else}}
+    <p>{{if .PaymentPlan.Observations}}{{.PaymentPlan.Observations}}{{else}}Sin observaciones.{{end}}</p>
+    {{end}}
+  </section>
 </div>
 
 <script>
   lucide.createIcons();
-
-  function goBack() {
-    window.location.href = '../payment/payments.html';
-  }
-
-  function goToPaymentPlans() {
-    window.location.href = 'paymentPlans.html';
-  }
-
-  function goToAffiliates() {
-    window.location.href = '../member/members.html';
-  }
-
-  function goToPayments() {
-    window.location.href = '../payment/payments.html';
-  }
-
-  function goToCompanyDetail() {
-    window.location.href = '../company/company.html';
-  }
-
-  function openInstallmentModal(number, status, amount, dueDate, paidDate) {
-    document.getElementById('modal-installment-title').textContent = 'Cuota ' + number;
-    document.getElementById('modal-status').textContent = status;
-    document.getElementById('modal-amount').textContent = amount;
-    document.getElementById('modal-due-date').textContent = dueDate;
-    document.getElementById('modal-paid-date').textContent = paidDate || '—';
-
-    var modal = document.getElementById('installment-modal');
-    modal.classList.add('show');
-    lucide.createIcons();
-  }
-
-  function closeInstallmentModal() {
-    document.getElementById('installment-modal').classList.remove('show');
-  }
-
-  document.getElementById('installment-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-      closeInstallmentModal();
-    }
+  document.querySelectorAll('.money').forEach(function (el) {
+    var n = Number(el.getAttribute('data-amount'));
+    if (Number.isNaN(n)) return;
+    el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   });
 
-  function showCancelModal() {
-    document.getElementById('cancel-modal').classList.add('show');
-  }
-
-  function hideCancelModal() {
-    document.getElementById('cancel-modal').classList.remove('show');
-  }
-
-  function confirmCancel() {
-    hideCancelModal();
-    alert('Plan cancelado correctamente');
-    window.location.href = 'paymentPlans.html';
-  }
-
-  document.getElementById('cancel-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-      hideCancelModal();
-    }
-  });
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      closeInstallmentModal();
-      hideCancelModal();
-    }
-  });
-
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
-
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
+  (function () {
+    var btn = document.getElementById('open-included-payments-btn');
+    var src = document.getElementById('included-payments-modal-src');
+    if (!btn || !src) return;
+    btn.addEventListener('click', function () {
+      var container = document.getElementById('app-modal-container');
+      if (!container) return;
+      container.innerHTML = '';
+      container.appendChild(src.content.cloneNode(true));
+      if (window.lucide) lucide.createIcons();
     });
-
-    document.addEventListener('click', function() {
-      menu.classList.remove('show');
-    });
-  }
+  })();
 </script>
-
 {{end}}

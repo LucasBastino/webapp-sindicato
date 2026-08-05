@@ -11,7 +11,7 @@ type Payment struct {
 	Month        		int   	  	`db:"month"`
 	Year         		int       	`db:"year"`
 	DueDate				time.Time	`db:"due_date"`
-	Amount       		float32     `db:"amount"`
+	Amount       		*float32    `db:"amount"`
 	IsInPaymentPlan		bool		`db:"is_in_payment_plan"`
 	PaidAt		  		*time.Time 	`db:"paid_at"`
 	
@@ -27,11 +27,9 @@ func (p Payment) GetStatus() string{
 	
 	if p.PaidAt != nil {
 		return "Completado"
-	} else {
-		if time.Now().Day()>15{
-			return "Vencido"
-		} else{
-			return "Pendiente"
-		}
 	}
+	if time.Now().After(p.DueDate) {
+		return "Vencido"
+	}
+	return "Pendiente"
 }

@@ -11,175 +11,185 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
 
 <body class="modal-page modal-form-modal">
 
-<div class="modal-overlay" id="modal-overlay">
+{{template "payment-modal" .}}
 
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+</body>
+</html>
+
+{{define "payment-modal"}}
+<div class="modal-overlay show" id="payment-modal-overlay"
+     onclick="if(event.target===this) document.getElementById('app-modal-container').innerHTML=''">
+
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
 
     <div class="modal-header">
-      <h3 id="modal-title">Registrar pago</h3>
-      <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">
+      <h3 id="payment-modal-title">{{if .Payment.IsInPaymentPlan}}Detalle de pago{{else if .Payment.IsPaid}}Editar pago{{else}}Registrar pago{{end}}</h3>
+      <button class="modal-close" type="button" aria-label="Cerrar"
+              onclick="document.getElementById('app-modal-container').innerHTML=''">
         <i data-lucide="x"></i>
       </button>
     </div>
 
-    <div class="modal-summary" id="modal-summary">
-      Mes: Agosto 2024 - $1.250.000 - <span class="status-red">Vencida</span>
+    <div class="modal-summary">
+      Mes: {{.Payment.MonthName}} {{.Payment.Year}}
+      {{if .Payment.Amount}} - <span class="money" data-amount="{{printf "%.2f" .Payment.Amount}}"></span>{{end}}
+      - <span class="{{if eq .Payment.Status "Vencido"}}status-red{{else if eq .Payment.Status "Completado"}}status-green{{else}}status-muted{{end}}">{{.Payment.Status}}</span>
     </div>
 
-    <form class="modal-form" id="payment-form" onsubmit="handleSubmit(event)">
-
+    {{if .Payment.IsInPaymentPlan}}
+    <div class="warning-row" style="margin:16px 0;">
+      <i data-lucide="alert-circle"></i>
+      <span>Este mes está incluido en un plan de pago y no se puede editar.</span>
+    </div>
+    <div class="modal-form">
       <div class="form-group">
-        <label>Monto a pagar <span class="required">*</span></label>
+        <label for="amount">Monto a pagar</label>
         <div class="input-wrapper has-currency">
           <span class="currency-prefix">$</span>
-          <input type="text" id="amount" value="$ 1.250.000" required>
+          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
         </div>
+      </div>
+      <div class="form-group">
+        <label for="paid-at">Fecha de pago</label>
+        <div class="input-wrapper has-icon">
+          <span class="input-icon"><i data-lucide="calendar"></i></span>
+          <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="observations">Observaciones</label>
+        <div class="textarea-wrapper">
+          <textarea id="observations" name="observations" maxlength="300" readonly>{{.Payment.Observations}}</textarea>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
+    </div>
+    {{else if not (.PageContext.UserAuthInfo.CanEdit "company")}}
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="amount">Monto a pagar</label>
+        <div class="input-wrapper has-currency">
+          <span class="currency-prefix">$</span>
+          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="paid-at">Fecha de pago</label>
+        <div class="input-wrapper has-icon">
+          <span class="input-icon"><i data-lucide="calendar"></i></span>
+          <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="observations">Observaciones</label>
+        <div class="textarea-wrapper">
+          <textarea id="observations" name="observations" maxlength="300" readonly>{{.Payment.Observations}}</textarea>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
+    </div>
+    {{else}}
+    <form class="modal-form" id="payment-form"
+          hx-put="/payments/{{.Payment.ID}}"
+          hx-target="#app-modal-container"
+          hx-swap="innerHTML">
+
+      <input type="hidden" id="is-paid" name="is_paid" value="{{if .Payment.IsPaid}}true{{else}}false{{end}}">
+
+      <div class="form-group{{if index .Errors "amount"}} input-invalid{{end}}">
+        <label for="amount">Monto a pagar <span class="required">*</span></label>
+        <div class="input-wrapper has-currency">
+          <span class="currency-prefix">$</span>
+          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}">
+        </div>
+        <p class="amount-error field-error">{{with index .Errors "amount"}}{{.}}{{end}}</p>
         <span class="helper-text">Debe pagarse el monto total del mes.</span>
       </div>
 
-      <div class="form-group">
-        <label>Fecha de pago <span class="required">*</span></label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="payment-date" value="17/06/2024" required>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Referencia / comprobante</label>
-        <div class="input-wrapper">
-          <input type="text" id="reference" placeholder="N° de operación, comprobante, etc.">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Adjuntar comprobante <span class="required">*</span></label>
-        <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="Subir archivo">
-          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="upload-formats">
-          <div class="upload-content">
-            <i data-lucide="upload-cloud"></i>
-            <span class="upload-main">Arrastrá y soltá tu archivo aquí</span>
-            <span class="upload-secondary">o hacé clic para seleccionar</span>
-            <span class="upload-formats" id="upload-formats">Formatos permitidos: JPG, PNG, PDF. Tamaño máx. 10MB</span>
+      <div class="form-group{{if index .Errors "paidAt"}} input-invalid{{end}}">
+        <label for="paid-at">Fecha de pago</label>
+        <div class="paid-at-row">
+          <button type="button" id="toggle-paid-btn"
+                  class="{{if .Payment.IsPaid}}btn-unmark-payment{{else}}btn-mark-payment{{end}}"
+                  aria-pressed="{{if .Payment.IsPaid}}true{{else}}false{{end}}">
+            {{if .Payment.IsPaid}}Quitar fecha de pago{{else}}Registrar fecha de pago{{end}}
+          </button>
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}"
+                   placeholder="DD/MM/AAAA"
+                   {{if not .Payment.IsPaid}}disabled{{end}}>
           </div>
         </div>
+        <p class="paid-at-error field-error">{{with index .Errors "paidAt"}}{{.}}{{end}}</p>
       </div>
 
-      <div class="form-group">
-        <label>Observaciones (opcional)</label>
+      <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
+        <label for="observations">Observaciones (opcional)</label>
         <div class="textarea-wrapper">
-          <textarea id="observations" maxlength="300" placeholder="Agregá observaciones sobre este pago..." oninput="updateCharCount()"></textarea>
-          <span class="char-counter" id="char-counter">0 / 300</span>
+          <textarea id="observations" name="observations" maxlength="300" placeholder="Agregá observaciones sobre este pago...">{{.Payment.Observations}}</textarea>
         </div>
+        <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
       </div>
 
-      <button type="submit" class="btn-submit" id="btn-submit">Guardar</button>
-
+      <button type="submit" class="btn-submit">Guardar</button>
     </form>
-
-    <div class="warning-row">
-      <i data-lucide="alert-circle"></i>
-      <span>Para cuotas vencidas es obligatorio adjuntar comprobante.</span>
-    </div>
+    {{end}}
 
   </div>
-
 </div>
 
 <script>
   lucide.createIcons();
-
-  function closeModal() {
-    window.location.href = 'payments.html';
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-submit');
-    btn.textContent = 'Guardando...';
-    btn.disabled = true;
-
-    setTimeout(function() {
-      alert('Pago registrado correctamente');
-      window.location.href = 'payments.html';
-    }, 800);
-  }
-
-  function updateCharCount() {
-    const textarea = document.getElementById('observations');
-    const counter = document.getElementById('char-counter');
-    counter.textContent = textarea.value.length + ' / 300';
-  }
-
-  var uploadZone = document.getElementById('upload-zone');
-  var fileInput = document.getElementById('file-input');
-
-  uploadZone.addEventListener('click', function() {
-    fileInput.click();
+  document.querySelectorAll('#payment-modal-overlay .money').forEach(function (el) {
+    var n = Number(el.getAttribute('data-amount'));
+    if (Number.isNaN(n)) return;
+    el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   });
-
-  uploadZone.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-
-  fileInput.addEventListener('change', function() {
-    if (this.files.length > 0) {
-      var fileName = this.files[0].name;
-      var uploadContent = uploadZone.querySelector('.upload-content');
-      uploadContent.innerHTML = '<i data-lucide="file-check"></i><span class="upload-main">' + fileName + '</span><span class="upload-secondary">Archivo seleccionado - hacé clic para cambiar</span>';
-      lucide.createIcons();
-    }
-  });
-
-  uploadZone.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('drag-active');
-  });
-
-  uploadZone.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    this.classList.remove('drag-active');
-  });
-
-  uploadZone.addEventListener('drop', function(e) {
-    e.preventDefault();
-    this.classList.remove('drag-active');
-
-    if (e.dataTransfer.files.length > 0) {
-      fileInput.files = e.dataTransfer.files;
-      var fileName = e.dataTransfer.files[0].name;
-      var uploadContent = uploadZone.querySelector('.upload-content');
-      uploadContent.innerHTML = '<i data-lucide="file-check"></i><span class="upload-main">' + fileName + '</span><span class="upload-secondary">Archivo seleccionado - hacé clic para cambiar</span>';
-      lucide.createIcons();
-    }
-  });
-
-  document.getElementById('modal-overlay').addEventListener('click', function(e) {
-    if (e.target === this) {
-      closeModal();
-    }
-  });
-
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', function onPaymentEsc(e) {
     if (e.key === 'Escape') {
-      closeModal();
+      var container = document.getElementById('app-modal-container');
+      if (container) container.innerHTML = '';
+      document.removeEventListener('keydown', onPaymentEsc);
     }
   });
 
-  var urlParams = new URLSearchParams(window.location.search);
-  var month = urlParams.get('month');
-  if (month) {
-    var summary = document.getElementById('modal-summary');
-    summary.innerHTML = 'Mes: ' + month.charAt(0).toUpperCase() + month.slice(1) + ' 2024 - $1.250.000 - <span class="status-red">Vencida</span>';
-  }
-</script>
+  (function () {
+    var isPaidInput = document.getElementById('is-paid');
+    var paidAtInput = document.getElementById('paid-at');
+    var toggleBtn = document.getElementById('toggle-paid-btn');
+    if (!isPaidInput || !paidAtInput || !toggleBtn) return;
 
-</body>
-</html>
+    function setPaidState(paid) {
+      isPaidInput.value = paid ? 'true' : 'false';
+      paidAtInput.disabled = !paid;
+      if (!paid) {
+        paidAtInput.value = '';
+      }
+      toggleBtn.className = paid ? 'btn-unmark-payment' : 'btn-mark-payment';
+      toggleBtn.textContent = paid ? 'Quitar fecha de pago' : 'Registrar fecha de pago';
+      toggleBtn.setAttribute('aria-pressed', paid ? 'true' : 'false');
+    }
+
+    toggleBtn.addEventListener('click', function () {
+      setPaidState(isPaidInput.value !== 'true');
+    });
+  })();
+</script>
+<script type="module">
+  import { validatePayment } from '/static/scripts/form-validation/payment.js';
+
+  const form = document.getElementById('payment-form');
+  form?.addEventListener('submit', (e) => {
+    if (!validatePayment()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+</script>
+{{end}}

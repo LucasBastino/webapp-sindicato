@@ -29,59 +29,11 @@
 <script>
   lucide.createIcons();
 
-  document.querySelectorAll('.card-title').forEach(function(title) {
-    title.addEventListener('click', function() {
-      this.closest('.affiliate-card').classList.toggle('collapsed');
-    });
-  });
-
-  var isEditing = false;
-  var formInputs = document.querySelectorAll('.affiliate-main input, .affiliate-main select, .affiliate-main textarea');
-  var btnEdit = document.getElementById('btn-edit');
-  var btnSave = document.getElementById('btn-save');
-
-  if (btnEdit) {
-    btnEdit.addEventListener('click', function() {
-      isEditing = !isEditing;
-      formInputs.forEach(function(input) {
-        if (input.tagName === 'SELECT') {
-          input.disabled = !isEditing;
-        } else if (isEditing) {
-          input.removeAttribute('readonly');
-        } else {
-          input.setAttribute('readonly', 'readonly');
-        }
-        input.classList.toggle('editable', isEditing);
-      });
-      btnEdit.innerHTML = isEditing ? '<i data-lucide="x"></i> Cancelar' : '<i data-lucide="pencil"></i> Editar';
-      if (btnSave) btnSave.style.display = isEditing ? 'flex' : 'none';
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'main-content') {
       lucide.createIcons();
-    });
-  }
-
-  if (btnSave) {
-    btnSave.style.display = 'none';
-    btnSave.addEventListener('click', function() {
-      formInputs.forEach(function(input) {
-        if (input.tagName === 'SELECT') { input.disabled = true; }
-        else { input.setAttribute('readonly', 'readonly'); }
-        input.classList.remove('editable');
-      });
-      isEditing = false;
-      if (btnEdit) btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
-      btnSave.style.display = 'none';
-    });
-  }
-
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
-    });
-    document.addEventListener('click', function() { menu.classList.remove('show'); });
-  }
+    }
+  });
 </script>
 
 </body>
@@ -89,32 +41,61 @@
 
 {{define "member-content"}}
 
-    <div class="page-header affiliate-header">
-      <div>
-        <h1>Detalle del Afiliado</h1>
-        <p>Vista completa de los datos del afiliado</p>
-      </div>
+    {{if eq .PageContext.Mode "add"}}
+    <div class="affiliate-form-page">
+    {{end}}
 
+    <div class="page-header affiliate-header">
+      {{if eq .PageContext.Mode "add"}}
+      <h1>Agregar Afiliado</h1>
+      <p>Completá los datos para registrar un nuevo afiliado</p>
+      {{else}}
+      <h1>{{.Member.LastName}}, {{.Member.Name}}</h1>
+      <p>Vista completa de los datos del afiliado</p>
       <div class="header-actions">
-        <button class="btn btn-secondary" id="btn-edit">
+        <button class="btn btn-secondary" type="button"
+                hx-get="/members"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="arrow-left"></i>
+          Tabla de afiliados
+        </button>
+        {{if and (not .Member.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "member")}}
+        <button class="btn btn-secondary" id="btn-edit" type="button">
           <i data-lucide="pencil"></i>
           Editar
         </button>
-
-        <button class="btn btn-primary" id="btn-save">
+        <button class="btn btn-primary" id="btn-save" type="submit" form="member-form" style="display:none;">
           <i data-lucide="save"></i>
           Guardar
         </button>
+        {{end}}
       </div>
+      {{end}}
     </div>
 
     <!-- MAIN GRID -->
 
-    <div class="affiliate-grid">
+    <div class="affiliate-grid{{if eq .PageContext.Mode "add"}} affiliate-grid--form-only{{end}}">
 
       <!-- LEFT COLUMN -->
 
-      <div class="affiliate-main">
+      {{if eq .PageContext.Mode "add"}}
+      <form id="member-form"
+            class="affiliate-main is-editing"
+            hx-post="/members"
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+      {{else}}
+      <form id="member-form"
+            class="affiliate-main"
+            data-is-deleted="{{.Member.IsDeleted}}"
+            hx-put="/members/{{.Member.ID}}"
+            hx-target="#main-content"
+            hx-swap="innerHTML"
+            hx-on::before-request="this.querySelectorAll('select').forEach(function(s){ s.disabled = false; })">
+        <input type="hidden" id="company-id" name="company-id" value="{{.Member.CompanyID}}">
+      {{end}}
 
         <!-- DATOS PERSONALES -->
 
@@ -128,29 +109,35 @@
           </div>
           <div class="card-content">
             <div class="form-grid">
-              <div class="form-group">
-                <label>Nombre</label>
-                <input type="text" name="name" value="{{.Member.Name}}" readonly />
+              <div class="form-group{{if index .Errors "name"}} input-invalid{{end}}">
+                <label>Nombre <span class="required-marker">*</span></label>
+                <input type="text" id="name" name="name" value="{{.Member.Name}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="name-error field-error">{{with index .Errors "name"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Apellido</label>
-                <input type="text" name="last-name" value="{{.Member.LastName}}" readonly />
+              <div class="form-group{{if index .Errors "lastName"}} input-invalid{{end}}">
+                <label>Apellido <span class="required-marker">*</span></label>
+                <input type="text" id="last-name" name="last-name" value="{{.Member.LastName}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="last-name-error field-error">{{with index .Errors "lastName"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "dni"}} input-invalid{{end}}">
                 <label>DNI</label>
-                <input type="text" name="dni" value="{{.Member.Dni}}" readonly />
+                <input type="text" id="dni" name="dni" value="{{.Member.Dni}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="dni-error field-error">{{with index .Errors "dni"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "cuil"}} input-invalid{{end}}">
                 <label>CUIL</label>
-                <input type="text" name="cuil" value="{{.Member.Cuil}}" readonly />
+                <input type="text" id="cuil" name="cuil" value="{{.Member.Cuil}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="cuil-error field-error">{{with index .Errors "cuil"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Fecha de Nacimiento</label>
-                <input type="text" name="birthday" value="{{.Member.Birthday}}" readonly />
+              <div class="form-group{{if index .Errors "birthday"}} input-invalid{{end}}">
+                <label>Fecha de Nacimiento <span class="required-marker">*</span></label>
+                <input type="text" id="birthday" name="birthday" value="{{.Member.Birthday}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" />
+                <p class="birthday-error field-error">{{with index .Errors "birthday"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Género</label>
-                <select name="gender" disabled>
+              <div class="form-group{{if index .Errors "gender"}} input-invalid{{end}}">
+                <label>Género <span class="required-marker">*</span></label>
+                <select id="gender" name="gender" {{if ne .PageContext.Mode "add"}}disabled{{end}}>
+                  <option value="">Seleccionar</option>
                   <option value="Masculino" {{if eq .Member.Gender "Masculino"}}selected{{end}}>Masculino</option>
                   <option value="Femenino" {{if eq .Member.Gender "Femenino"}}selected{{end}}>Femenino</option>
                   <option value="No binario" {{if eq .Member.Gender "No binario"}}selected{{end}}>No binario</option>
@@ -159,24 +146,29 @@
                   <option value="Otra identidad" {{if eq .Member.Gender "Otra identidad"}}selected{{end}}>Otra identidad</option>
                   <option value="Sin especificar" {{if eq .Member.Gender "Sin especificar"}}selected{{end}}>Sin especificar</option>
                 </select>
+                <p class="gender-error field-error">{{with index .Errors "gender"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Estado Civil</label>
-                <select name="marital-status" disabled>
+              <div class="form-group{{if index .Errors "maritalStatus"}} input-invalid{{end}}">
+                <label>Estado Civil <span class="required-marker">*</span></label>
+                <select id="marital-status" name="marital-status" {{if ne .PageContext.Mode "add"}}disabled{{end}}>
+                  <option value="">Seleccionar</option>
                   <option value="Soltero" {{if eq .Member.MaritalStatus "Soltero"}}selected{{end}}>Soltero</option>
                   <option value="Casado" {{if eq .Member.MaritalStatus "Casado"}}selected{{end}}>Casado</option>
                   <option value="Separado" {{if eq .Member.MaritalStatus "Separado"}}selected{{end}}>Separado</option>
                   <option value="Divorciado" {{if eq .Member.MaritalStatus "Divorciado"}}selected{{end}}>Divorciado</option>
                   <option value="Viudo" {{if eq .Member.MaritalStatus "Viudo"}}selected{{end}}>Viudo</option>
                 </select>
+                <p class="marital-status-error field-error">{{with index .Errors "maritalStatus"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "phone"}} input-invalid{{end}}">
                 <label>Teléfono</label>
-                <input type="text" name="phone" value="{{.Member.Phone}}" readonly />
+                <input type="text" id="phone" name="phone" value="{{.Member.Phone}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="phone-error field-error">{{with index .Errors "phone"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "email"}} input-invalid{{end}}" style="grid-column: span 2;">
                 <label>Correo Electrónico</label>
-                <input type="email" name="email" value="{{.Member.Email}}" readonly />
+                <input type="email" id="email" name="email" value="{{.Member.Email}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="email-error field-error">{{with index .Errors "email"}}{{.}}{{end}}</p>
               </div>
             </div>
           </div>
@@ -194,17 +186,20 @@
           </div>
           <div class="card-content">
             <div class="form-grid">
-              <div class="form-group" style="grid-column: span 2;">
+              <div class="form-group{{if index .Errors "address"}} input-invalid{{end}}" style="grid-column: span 2;">
                 <label>Dirección</label>
-                <input type="text" name="address" value="{{.Member.Address}}" readonly />
+                <input type="text" id="address" name="address" value="{{.Member.Address}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="address-error field-error">{{with index .Errors "address"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "district"}} input-invalid{{end}}">
                 <label>Localidad</label>
-                <input type="text" name="district" value="{{.Member.District}}" readonly />
+                <input type="text" id="district" name="district" value="{{.Member.District}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="district-error field-error">{{with index .Errors "district"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "postalCode"}} input-invalid{{end}}">
                 <label>Código Postal</label>
-                <input type="text" name="postal-code" value="{{.Member.PostalCode}}" readonly />
+                <input type="text" id="postal-code" name="postal-code" value="{{.Member.PostalCode}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="postal-code-error field-error">{{with index .Errors "postalCode"}}{{.}}{{end}}</p>
               </div>
             </div>
           </div>
@@ -222,48 +217,102 @@
           </div>
           <div class="card-content">
             <div class="form-grid">
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "memberNumber"}} input-invalid{{end}}">
                 <label>N° Afiliado</label>
-                <input type="text" name="member-number" value="{{.Member.MemberNumber}}" readonly />
+                <input type="text" id="member-number" name="member-number" value="{{.Member.MemberNumber}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} />
+                <p class="member-number-error field-error">{{with index .Errors "memberNumber"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group{{if index .Errors "entryDate"}} input-invalid{{end}}">
                 <label>Fecha de Ingreso</label>
-                <input type="text" name="entry-date" value="{{.Member.EntryDate}}" readonly />
+                <input type="text" id="entry-date" name="entry-date" value="{{.Member.EntryDate}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" />
+                <p class="entry-date-error field-error">{{with index .Errors "entryDate"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Empresa</label>
+              <div class="form-group{{if index .Errors "companyID"}} input-invalid{{end}}">
+                <label>Empresa <span class="required-marker">*</span></label>
+                {{if eq .PageContext.Mode "add"}}
+                <select id="company-id" name="company-id"
+                        hx-get="/companies?view=options"
+                        hx-trigger="load"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        data-selected="{{.Member.CompanyID}}">
+                  <option value="">Cargando...</option>
+                </select>
+                {{else}}
                 <input type="text" value="{{.Member.CompanyName}}" readonly />
+                {{end}}
+                <p class="company-id-error field-error">{{with index .Errors "companyID"}}{{.}}{{end}}</p>
               </div>
-              <div class="form-group">
-                <label>Categoría</label>
-                <input type="text" name="category" value="{{.Member.Category}}" readonly />
+              <div class="form-group{{if index .Errors "category"}} input-invalid{{end}}">
+                <label>Categoría <span class="required-marker">*</span></label>
+                <select id="category" name="category" {{if ne .PageContext.Mode "add"}}disabled{{end}}>
+                  <option value="">Seleccionar</option>
+                  <option value="Nivel 1: Oficial Múltiple" {{if eq .Member.Category "Nivel 1: Oficial Múltiple"}}selected{{end}}>Nivel 1: Oficial Múltiple</option>
+                  <option value="Nivel 2: Oficial Especializado" {{if eq .Member.Category "Nivel 2: Oficial Especializado"}}selected{{end}}>Nivel 2: Oficial Especializado</option>
+                  <option value="Nivel 3: Oficial General" {{if eq .Member.Category "Nivel 3: Oficial General"}}selected{{end}}>Nivel 3: Oficial General</option>
+                  <option value="Nivel 4: Medio Oficial" {{if eq .Member.Category "Nivel 4: Medio Oficial"}}selected{{end}}>Nivel 4: Medio Oficial</option>
+                  <option value="Nivel 5: Ayudante" {{if eq .Member.Category "Nivel 5: Ayudante"}}selected{{end}}>Nivel 5: Ayudante</option>
+                  <option value="Nivel 6: Operario Act. Industrial" {{if eq .Member.Category "Nivel 6: Operario Act. Industrial"}}selected{{end}}>Nivel 6: Operario Act. Industrial</option>
+                </select>
+                <p class="category-error field-error">{{with index .Errors "category"}}{{.}}{{end}}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- NOTAS -->
+        <!-- OBSERVACIONES -->
 
         <div class="card affiliate-card">
           <div class="card-title">
             <div class="card-title-left">
               <i data-lucide="file-text"></i>
-              <h3>Notas</h3>
+              <h3>Observaciones</h3>
             </div>
             <i data-lucide="chevron-down"></i>
           </div>
           <div class="card-content">
             <div class="form-grid">
-              <div class="form-group" style="grid-column: span 2;">
-                <label>Observaciones</label>
-                <textarea name="observations" readonly rows="4">{{.Member.Observations}}</textarea>
+              <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}" style="grid-column: span 2;">
+                <textarea id="observations" name="observations" {{if ne .PageContext.Mode "add"}}readonly{{end}} rows="4">{{.Member.Observations}}</textarea>
+                <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
               </div>
             </div>
           </div>
         </div>
 
-      </div>
+        <div class="form-footer-actions">
+          {{if eq .PageContext.Mode "add"}}
+          <button class="btn btn-secondary" type="button"
+                  {{if ne .Member.CompanyID 0}}
+                  hx-get="/companies/{{.Member.CompanyID}}/members"
+                  {{else}}
+                  hx-get="/members"
+                  {{end}}
+                  hx-target="#main-content"
+                  hx-swap="innerHTML"
+                  hx-push-url="true">
+            <i data-lucide="x"></i>
+            Cancelar
+          </button>
+          <button class="btn btn-primary" type="submit" id="btn-add-member-footer">
+            <i data-lucide="plus"></i>
+            Agregar
+          </button>
+          {{else if and (not .Member.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "member")}}
+          <button class="btn btn-secondary" type="button" id="btn-cancel-footer" style="display:none;">
+            <i data-lucide="x"></i>
+            Cancelar
+          </button>
+          <button class="btn btn-primary" type="submit" id="btn-save-footer" style="display:none;">
+            <i data-lucide="save"></i>
+            Guardar
+          </button>
+          {{end}}
+        </div>
 
+      </form>
+
+      {{if ne .PageContext.Mode "add"}}
       <!-- RIGHT SIDEBAR -->
 
       <aside class="affiliate-sidebar">
@@ -271,7 +320,13 @@
         <!-- PROFILE CARD -->
 
         <div class="card profile-card">
-          <div class="profile-avatar">{{slice .Member.LastName 0 1}}{{slice .Member.Name 0 1}}</div>
+          <div class="profile-avatar">
+            {{if and .Member.LastName .Member.Name}}
+            {{slice .Member.LastName 0 1}}{{slice .Member.Name 0 1}}
+            {{else}}
+            <i data-lucide="user"></i>
+            {{end}}
+          </div>
           <h3>{{.Member.LastName}}, {{.Member.Name}}</h3>
           <div class="profile-meta">
             <span>N° Afiliado</span>
@@ -310,9 +365,32 @@
 
         <!-- ACCIONES -->
 
+        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
         <div class="card">
           <h3>Acciones</h3>
+          {{if .Member.IsDeleted}}
+          <button class="action-btn green"
+                  type="button"
+                  hx-post="/members/{{.Member.ID}}/restore"
+                  hx-headers='{"view": "page"}'
+                  hx-confirm="¿Estás seguro de restaurar este afiliado?"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML">
+            <i data-lucide="rotate-ccw"></i>
+            Restaurar afiliado
+          </button>
           <button class="action-btn red"
+                  type="button"
+                  hx-delete="/members/{{.Member.ID}}/permanent"
+                  hx-confirm="¿Estás seguro de eliminar permanentemente este afiliado? Esta acción no se puede deshacer."
+                  hx-target="#main-content"
+                  hx-push-url="/members">
+            <i data-lucide="trash-2"></i>
+            Eliminar permanentemente
+          </button>
+          {{else}}
+          <button class="action-btn red"
+                  type="button"
                   hx-delete="/members/{{.Member.ID}}"
                   hx-confirm="¿Estás seguro de eliminar este afiliado?"
                   hx-target="#main-content"
@@ -320,10 +398,104 @@
             <i data-lucide="trash-2"></i>
             Eliminar afiliado
           </button>
+          {{end}}
         </div>
+        {{end}}
 
       </aside>
+      {{end}}
 
     </div>
+
+    {{if eq .PageContext.Mode "add"}}
+    </div>
+    {{end}}
+
+<script>
+  lucide.createIcons();
+
+  document.querySelectorAll('.card-title').forEach(function(title) {
+    title.addEventListener('click', function() {
+      this.closest('.affiliate-card').classList.toggle('collapsed');
+    });
+  });
+
+  {{if eq .PageContext.Mode "add"}}
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    if (evt.detail.verb === 'post') {
+      evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
+    }
+  });
+
+  var companySelect = document.getElementById('company-id');
+  if (companySelect) {
+    companySelect.addEventListener('htmx:afterSwap', function() {
+      var selected = this.getAttribute('data-selected');
+      if (selected && selected !== '0') this.value = selected;
+    });
+  }
+  {{else if .PageContext.UserAuthInfo.CanEdit "member"}}
+  var memberForm = document.getElementById('member-form');
+  var isDeleted = memberForm && memberForm.dataset.isDeleted === 'true';
+
+  if (!isDeleted) {
+    var isEditing = false;
+    var formInputs = document.querySelectorAll('#member-form input:not([type="hidden"]), #member-form select, #member-form textarea');
+    var btnEdit = document.getElementById('btn-edit');
+    var btnSave = document.getElementById('btn-save');
+    var btnSaveFooter = document.getElementById('btn-save-footer');
+    var btnCancelFooter = document.getElementById('btn-cancel-footer');
+
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function() {
+        isEditing = !isEditing;
+        memberForm.classList.toggle('is-editing', isEditing);
+        formInputs.forEach(function(input) {
+          if (input.tagName === 'SELECT') {
+            input.disabled = !isEditing;
+          } else if (isEditing) {
+            input.removeAttribute('readonly');
+          } else {
+            input.setAttribute('readonly', 'readonly');
+          }
+          input.classList.toggle('editable', isEditing);
+        });
+        btnEdit.innerHTML = isEditing ? '<i data-lucide="x"></i> Cancelar' : '<i data-lucide="pencil"></i> Editar';
+        if (btnSave) btnSave.style.display = isEditing ? 'flex' : 'none';
+        if (btnSaveFooter) btnSaveFooter.style.display = isEditing ? 'flex' : 'none';
+        if (btnCancelFooter) btnCancelFooter.style.display = isEditing ? 'flex' : 'none';
+        lucide.createIcons();
+      });
+
+      if (btnCancelFooter) {
+        btnCancelFooter.addEventListener('click', function() {
+          if (isEditing) btnEdit.click();
+        });
+      }
+
+      {{if .Errors}}
+      btnEdit.click();
+      {{end}}
+    }
+  }
+  {{end}}
+
+</script>
+
+<script type="module">
+  import { validateMember } from '/static/scripts/form-validation/member.js';
+
+  const form = document.getElementById('member-form');
+  // capture (true): corre antes que el listener de HTMX en el form.
+  // Si la validación falla:
+  // - preventDefault: cancela el submit nativo
+  // - stopImmediatePropagation: evita que HTMX vea el evento y dispare el request
+  form?.addEventListener('submit', (e) => {
+    if (!validateMember()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+</script>
 
 {{end}}

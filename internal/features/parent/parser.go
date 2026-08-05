@@ -2,16 +2,16 @@ package parent
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
 	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/app-sindicato/internal/validation"
 )
 
 
 func toModel(req request) (Parent, error) {
 	// ya esta validado, no hace falta chequear el error
-	birthdayTime, err := time.Parse("02/01/2006", req.Birthday)
+	birthdayTime, err := v.ParseDMY(req.Birthday)
 	if err!=nil{
 		return Parent{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse birthday: %w", err), "")
 	}
@@ -20,27 +20,28 @@ func toModel(req request) (Parent, error) {
 	cuil := pu.StrOrEmpty(req.Cuil)
 
 	return Parent{
-		Name:     		req.Name,
-		LastName:  		req.LastName,
-		Relationship:	req.Relationship,
-		Birthday:  		birthdayTime, // lo tenés como string, se guarda igual
-		Gender:    		req.Gender,
-		Cuil:     		cuil,
-		// CreatedAt y UpdatedAt los maneja la DB normalmente
+		Name:         req.Name,
+		LastName:     req.LastName,
+		Relationship: req.Relationship,
+		Birthday:     birthdayTime,
+		Gender:       req.Gender,
+		Cuil:         cuil,
+		Observations: req.Observations,
 	}, nil
 }
 
 // cuando da error el formulario queriendo crear
 func toResponseFromRequest(req request) (response, error) {
 
-    return response{
-        Name:    		req.Name,
-        LastName: 		req.LastName,
-        Relationship:	req.Relationship,
-        Birthday: 		req.Birthday,
-        Gender:   		req.Gender,
-        Cuil:     		req.Cuil,
-    }, nil
+	return response{
+		Name:         req.Name,
+		LastName:     req.LastName,
+		Relationship: req.Relationship,
+		Birthday:     req.Birthday,
+		Gender:       req.Gender,
+		Cuil:         req.Cuil,
+		Observations: req.Observations,
+	}, nil
 }
 
 // cuando da error el formulario queriendo editar
@@ -50,15 +51,16 @@ func mergetoResponse(p Parent, req request) (response, error) {
 	cuil := pu.StrOrDBNull(p.Cuil)
 	// de esta manera, puede compararse con un string vacio del request, sino no son del mismo tipo y por lo tanto, no son comparables
 	
-    return response{
-        Name:			pu.MergeField(p.Name, req.Name),
-		LastName:		pu.MergeField(p.LastName, req.LastName),
-		Relationship:	pu.MergeField(p.Relationship, req.Relationship),
-		Birthday:		pu.MergeField(p.Birthday.Format("02/01/2006"), req.Birthday),
-		Gender:			pu.MergeField(p.Gender, req.Gender),
-		Cuil:			pu.MergeField(cuil, req.Cuil),
-
-    }, nil
+	return response{
+		ID:           p.ID,
+		Name:         pu.MergeField(p.Name, req.Name),
+		LastName:     pu.MergeField(p.LastName, req.LastName),
+		Relationship: pu.MergeField(p.Relationship, req.Relationship),
+		Birthday:     pu.MergeField(p.Birthday.Format("02/01/2006"), req.Birthday),
+		Gender:       pu.MergeField(p.Gender, req.Gender),
+		Cuil:         pu.MergeField(cuil, req.Cuil),
+		Observations: pu.MergeField(p.Observations, req.Observations),
+	}, nil
 }
 
 func toResponse(p Parent) response {
@@ -67,14 +69,16 @@ func toResponse(p Parent) response {
 	cuil := pu.StrOrDBNull(p.Cuil)
 
 	return response{
-		Name:      		p.Name,
-		LastName:  		p.LastName,
-		Relationship:   p.Relationship,
-		Birthday:  		p.Birthday.Format("02/01/2006"),
-		Gender:    		p.Gender,
-		Cuil:      		cuil,
-		CreatedAt: 		p.CreatedAt.Format("02/01/2006"),
-		UpdatedAt: 		p.UpdatedAt.Format("02/01/2006"),
+		ID:           p.ID,
+		Name:         p.Name,
+		LastName:     p.LastName,
+		Relationship: p.Relationship,
+		Birthday:     p.Birthday.Format("02/01/2006"),
+		Gender:       p.Gender,
+		Cuil:         cuil,
+		Observations: p.Observations,
+		CreatedAt:    p.CreatedAt.Format("02/01/2006"),
+		UpdatedAt:    p.UpdatedAt.Format("02/01/2006"),
 	}
 }
 

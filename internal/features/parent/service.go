@@ -3,16 +3,22 @@ package parent
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 )
 
 type ParentService struct {
-	repo *ParentRepository
+	repo        *ParentRepository
+	idempotency *idempotency.IdempotencyService
 }
 
-func NewParentService(repo *ParentRepository) *ParentService {
-	return &ParentService{repo: repo}
+func NewParentService(repo *ParentRepository, idempotencyService *idempotency.IdempotencyService) *ParentService {
+	return &ParentService{
+		repo:        repo,
+		idempotency: idempotencyService,
+	}
 }
 
 
@@ -48,10 +54,24 @@ func (s *ParentService) Count(ctx context.Context, memberID int) (int, error) {
 }
 
 
-func (s *ParentService) Create(ctx context.Context, parent Parent) (int, error) {
-	id, err := s.repo.Insert(ctx, parent)
+func (s *ParentService) Create(ctx context.Context, parent Parent, idempotencyKey string) (int, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return 0, apperrors.NewDatabaseError(fmt.Errorf("failed to begin tx creating parent: %w", err), "")
+	}
+	defer tx.Rollback()
+
+	id, err := s.repo.Insert(ctx, tx, parent)
 	if err!=nil{
 		return 0, apperrors.NewDatabaseError(err, "")
+	}
+
+	if err := s.idempotency.UpdateResource(ctx, tx, idempotencyKey, "parent", id); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, apperrors.NewDatabaseError(fmt.Errorf("failed to commit parent create: %w", err), "")
 	}
 
 	return id, nil

@@ -44,7 +44,17 @@ func renderToast(c *fiber.Ctx, appErr *apperrors.AppError) error {
 }
 
 func renderModal(c *fiber.Ctx, appErr *apperrors.AppError) error {
-	return c.Status(appErr.StatusCode).Render("error_modal", fiber.Map{"errorMsg": appErr.ClientMsg})
+	data := fiber.Map{"errorMsg": appErr.ClientMsg}
+	if appErr.Type == "not_found" {
+		data["errorTitle"] = "Registro no encontrado"
+		if c.Method() == fiber.MethodGet && c.Get("HX-Request") == "true" {
+			c.Set("HX-Retarget", "#app-modal-container")
+			c.Set("HX-Reswap", "innerHTML")
+		} else if c.Get("HX-Request") == "" {
+			data["goToDashboard"] = true
+		}
+	}
+	return c.Status(appErr.StatusCode).Render("error/error_modal", data)
 }
 
 func renderLogin(c *fiber.Ctx, appErr *apperrors.AppError) error {

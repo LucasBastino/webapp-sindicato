@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/app-sindicato/internal/common/page"
 	"github.com/LucasBastino/app-sindicato/internal/features/payment"
+	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
 )
 
@@ -14,15 +16,33 @@ type CompanyService struct{
 	repo *CompanyRepository
 
 	paymentService *payment.PaymentService
+	idempotency    *idempotency.IdempotencyService
 
 	logger logger.Logger
 }
 
-func NewCompanyService(repo *CompanyRepository, paymentService *payment.PaymentService) *CompanyService{
+func NewCompanyService(repo *CompanyRepository, paymentService *payment.PaymentService, idempotencyService *idempotency.IdempotencyService) *CompanyService{
 	return &CompanyService{
-		repo: repo,
+		repo:           repo,
 		paymentService: paymentService,
+		idempotency:    idempotencyService,
 	}
+}
+
+func (s *CompanyService) GetName(ctx context.Context, id int) (string, error) {
+	company, err := s.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return company.Name, nil
+}
+
+func (s *CompanyService) ListActiveIDs(ctx context.Context) ([]int, error) {
+	ids, err := s.repo.ListActiveIDs(ctx)
+	if err != nil {
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+	return ids, nil
 }
 
 func (s *CompanyService) Get(ctx context.Context, id int) (*Company, error){
@@ -65,8 +85,22 @@ func (s *CompanyService) Count(ctx context.Context, filters companyFilters) (int
 	return count, nil
 }
 
+func (s *CompanyService) CountActive(ctx context.Context) (int, error) {
+	return s.Count(ctx, companyFilters{
+		statuses: page.StatusFilters{ShowActive: true},
+	})
+}
 
-func (s *CompanyService) Create(ctx context.Context, company Company) (int, error){
+func (s *CompanyService) FindRecent(ctx context.Context, limit int) ([]RecentCompany, error) {
+	companies, err := s.repo.FindRecent(ctx, limit)
+	if err != nil {
+		return nil, apperrors.NewDatabaseError(err, "")
+	}
+	return companies, nil
+}
+
+
+func (s *CompanyService) Create(ctx context.Context, company Company, idempotencyKey string) (int, error){
 	tx, err := s.repo.BeginTx(ctx)
 	if err!=nil{
 		return 0, apperrors.NewDatabaseError(fmt.Errorf("failed to iniciate transaction while creating company: %w", err), "")
@@ -91,6 +125,10 @@ func (s *CompanyService) Create(ctx context.Context, company Company) (int, erro
 	err = s.paymentService.CreateRemainingPaymentsByID(ctx, tx, int(id))
 	if err!=nil{
 		return 0, err 
+	}
+
+	if err := s.idempotency.UpdateResource(ctx, tx, idempotencyKey, "company", id); err != nil {
+		return 0, err
 	}
 	
 	if err := tx.Commit(); err!=nil{

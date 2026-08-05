@@ -28,7 +28,7 @@ export function validateDni(input){
 }
 
 export function validateBirthday(input){
-    if (input === "") return { valid: true, error: "" }
+    if (input === "") return { valid: false, error: "Campo requerido." }
 
     const min = new Date(1900, 0, 1)
     const max = new Date()
@@ -186,7 +186,7 @@ export function validateEmail(input){
         return { valid: false, error: "Formato no válido." }  
         }
 
-    input = v.removeChars(input, "!#$%&'*+-/=?^_`{|}~.")
+    input = v.removeChars(input, "!#$%&'*+-/=?^_`{|}~.@")
     let result = v.isAlphanumeric(input)
     if (!result.valid) return result
 
@@ -206,12 +206,11 @@ export function validateMemberNumber(input){
 
 
 export function validateCompanyID(input){
-    
-    if (input === "") return { valid: true, error: "" }
-    
+    if (input === "") return { valid: false, error: "Campo requerido." }
+
     let result = v.isNumeric(input)
     if (!result.valid) return result
-    
+
     if (input == "0") return { valid: false, error: "El valor ingresado no es válido." }
 
     return v.isNotLongerThan(input, 10)
@@ -219,10 +218,10 @@ export function validateCompanyID(input){
 
 
 export function validateCategory(input){
-    
+
     if (input === "") return { valid: false, error: "Campo requerido." }
 
-    optionsSet = new Set([
+    const optionsSet = new Set([
         "Nivel 1: Oficial Múltiple",
         "Nivel 2: Oficial Especializado",
         "Nivel 3: Oficial General",
@@ -246,6 +245,7 @@ export function validateEntryDate(input){
 
 // v.Company INFO
 export function validateCompanyName(input){
+    if (input === "") return { valid: false, error: "Campo requerido." }
     return v.isNotLongerThan(input, 150)
 }
 
@@ -283,6 +283,8 @@ export function validateCuilCuit(input){
         const [prefix, dni, digit] = parts
         if (prefix.length !== 2 || dni.length !== 8 || digit.length !== 1){
                 return { valid: false, error: "Formato no válido."}
+        } else{
+            return { valid: true, error: "" }
         }
     }
 
@@ -338,26 +340,41 @@ export function validateStatus(input){
 export function validateAmount(input){
     if (input === "") return { valid: true, error: "" }
 
-    let val = input.replace(',', '.')
+    const normalized = normalizeAmountInput(String(input))
 
-    if (val.includes('.')){
+    if (normalized.includes(".")) {
+        if (normalized.startsWith(".") || normalized.endsWith(".")) {
+            return { valid: false, error: "Formato no válido." }
+        }
 
-        if (val.startsWith('.') || val.endsWith('.')) {return {valid: false, error: "Formato no válido."}} 
-        
-        const parts = val.split('.')
-        if (parts.length != 2) {return {valid: false, error: "Formato no válido."}} 
-        
-        if (parts[1].length > 2 ) {return {valid: false, error: "Formato no válido."}} 
-        
+        const parts = normalized.split(".")
+        if (parts.length !== 2) {
+            return { valid: false, error: "Formato no válido." }
+        }
+
+        if (parts[1].length > 2) {
+            return { valid: false, error: "Formato no válido." }
+        }
     }
 
-    val = v.removeChars(val, ".")
+    const digits = v.removeChars(normalized, ".")
 
-    let result = v.isNumeric(val)
+    const result = v.isNumeric(digits)
     if (!result.valid) return result
 
-    return v.isNotLongerThan(errorDiv, val, 20)
+    return v.isNotLongerThan(digits, 20)
 }
+
+// With comma: Argentine style (dots = thousands). Without: dot is decimal.
+function normalizeAmountInput(input) {
+    const trimmed = input.trim()
+    if (trimmed.includes(",")) {
+        return trimmed.replaceAll(".", "").replace(",", ".")
+    }
+    return trimmed
+}
+
+export { normalizeAmountInput }
 
 export function validatePaidAt(input){
     if (input === "") return { valid: true, error: "" }
@@ -399,6 +416,9 @@ export function validateUsername(input){
 	let result = v.isAlphanumeric(input)
     if (!result.valid) return result
 
+    result = v.hasAtLeast(input, 3)
+    if (!result.valid) return result
+
 	return v.isNotLongerThan(input, 20)
 }
 
@@ -410,8 +430,26 @@ export function validatePassword(input){
     let result = v.isAlphanumeric(input)
     if (!result.valid) return result
 
+    result = v.hasAtLeast(input, 8)
+    if (!result.valid) return result
+
     return v.isNotLongerThan(input, 20)
 }
+
+export function validateConfirmPassword(input){
+    if (input === "") return { valid: false, error: "Campo requerido." }
+
+    input = v.removeChars(input, " #-'&,.!?*+")
+
+    let result = v.isAlphanumeric(input)
+    if (!result.valid) return result
+
+    result = v.hasAtLeast(input, 8)
+    if (!result.valid) return result
+
+    return v.isNotLongerThan(input, 20)
+}
+
 
 export function validatePermissions(input){
     return v.isValidOption(input, permissionOptionsSet)

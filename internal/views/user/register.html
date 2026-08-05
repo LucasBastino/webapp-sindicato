@@ -24,11 +24,20 @@
   </main>
 
 </div>
+
+<script>
+  lucide.createIcons();
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
 </body>
 </html>
 
 {{define "register-content"}}
 
+    <div class="register-page">
     <div class="page-header">
       <h1>Registrar usuario</h1>
       <p>Completá la información para crear un nuevo usuario del sistema.</p>
@@ -41,12 +50,15 @@
         </div>
         <div>
           <h3>Nuevo usuario</h3>
-          <p>Datos personales y acceso</p>
+          <p>Datos de acceso y permisos</p>
         </div>
       </div>
 
-      <form class="register-form" id="register-form" action="/users" method="post" onsubmit="handleSubmit(event)">
-        <div class="form-group">
+      <form class="register-form" id="register-form"
+            hx-post="/users"
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+        <div class="form-group{{if index .Errors "username"}} input-invalid{{end}}">
           <label for="username">Nombre de usuario <span class="required">*</span></label>
           <div class="input-row">
             <span class="field-icon" aria-hidden="true"><i data-lucide="user"></i></span>
@@ -54,28 +66,15 @@
               type="text"
               id="username"
               name="username"
+              value="{{.User.Username}}"
               placeholder="Ingresar nombre de usuario"
               autocomplete="username"
-              required
             >
           </div>
+          <p class="username-error field-error">{{with index .Errors "username"}}{{.}}{{end}}</p>
         </div>
 
-        <div class="form-group">
-          <label for="role">Rol <span class="required">*</span></label>
-          <div class="input-row">
-            <span class="field-icon" aria-hidden="true"><i data-lucide="shield"></i></span>
-            <select id="role" name="role" required>
-              <option value="" disabled selected>Seleccionar rol</option>
-              <option value="admin">Administrador</option>
-              <option value="operator">Operador</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="readonly">Solo lectura</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
+        <div class="form-group{{if index .Errors "password"}} input-invalid{{end}}">
           <label for="password">Contraseña <span class="required">*</span></label>
           <div class="input-row">
             <span class="field-icon" aria-hidden="true"><i data-lucide="lock"></i></span>
@@ -83,42 +82,87 @@
               type="password"
               id="password"
               name="password"
+              value="{{.User.Password}}"
               placeholder="Ingresar contraseña"
               autocomplete="new-password"
-              required
             >
             <button type="button" class="toggle-visibility" aria-label="Mostrar contraseña" onclick="togglePassword('password', this)">
               <i data-lucide="eye"></i>
             </button>
           </div>
+          <p class="password-error field-error">{{with index .Errors "password"}}{{.}}{{end}}</p>
         </div>
 
-        <div class="form-group">
-          <label for="confirm_password">Confirmar contraseña <span class="required">*</span></label>
+        <div class="form-group{{if index .Errors "confirm_password"}} input-invalid{{end}}">
+          <label for="confirm-password">Confirmar contraseña <span class="required">*</span></label>
           <div class="input-row">
             <span class="field-icon" aria-hidden="true"><i data-lucide="lock"></i></span>
             <input
               type="password"
-              id="confirm_password"
+              id="confirm-password"
               name="confirm_password"
+              value="{{.User.ConfirmPassword}}"
               placeholder="Repetir contraseña"
               autocomplete="new-password"
-              required
             >
-            <button type="button" class="toggle-visibility" aria-label="Mostrar confirmación" onclick="togglePassword('confirm_password', this)">
+            <button type="button" class="toggle-visibility" aria-label="Mostrar confirmación" onclick="togglePassword('confirm-password', this)">
               <i data-lucide="eye"></i>
             </button>
           </div>
+          <p class="confirm-password-error field-error">{{with index .Errors "confirm_password"}}{{.}}{{end}}</p>
+        </div>
+
+        <div class="form-group{{if index .Errors "admin"}} input-invalid{{end}}">
+          <label class="checkbox-label">
+            <input type="checkbox" id="admin-checkbox" name="admin" value="on"
+                   {{if .User.Admin}}checked{{end}}
+                   onchange="syncAdminPermissions(this)">
+            Administrador
+          </label>
+          <p class="field-error">{{with index .Errors "admin"}}{{.}}{{end}}</p>
+        </div>
+
+        {{if index .Errors "resourceRoles"}}
+        <p class="field-error">{{index .Errors "resourceRoles"}}</p>
+        {{end}}
+
+        <div class="permissions-grid">
+          <div class="form-group{{if index .Errors "member"}} input-invalid{{end}}">
+            <label for="member">Afiliados</label>
+            <select id="member" name="member" class="permission-select" {{if .User.Admin}}disabled{{end}}>
+              <option value="editor" {{if or .User.Admin (eq (.User.Role "member") "editor") (eq (.User.Role "member") "")}}selected{{end}}>Editor</option>
+              <option value="viewer" {{if and (not .User.Admin) (eq (.User.Role "member") "viewer")}}selected{{end}}>Solo lectura</option>
+              <option value="">Sin acceso</option>
+            </select>
+            <p class="member-error field-error">{{with index .Errors "member"}}{{.}}{{end}}</p>
+          </div>
+
+          <div class="form-group{{if index .Errors "company"}} input-invalid{{end}}">
+            <label for="company">Empresas y pagos</label>
+            <select id="company" name="company" class="permission-select" {{if .User.Admin}}disabled{{end}}>
+              <option value="editor" {{if or .User.Admin (eq (.User.Role "company") "editor") (eq (.User.Role "company") "")}}selected{{end}}>Editor</option>
+              <option value="viewer" {{if and (not .User.Admin) (eq (.User.Role "company") "viewer")}}selected{{end}}>Solo lectura</option>
+              <option value="">Sin acceso</option>
+            </select>
+            <p class="company-error field-error">{{with index .Errors "company"}}{{.}}{{end}}</p>
+          </div>
+        </div>
+
+        <div class="form-footer-actions">
+          <button type="button" class="btn btn-secondary"
+                  hx-get="/user_panel"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML"
+                  hx-push-url="true">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" id="btn-create">
+            <i data-lucide="user-plus"></i>
+            Crear usuario
+          </button>
         </div>
       </form>
-
-      <div class="form-footer">
-        <button type="button" class="btn-cancel" onclick="goBack()">Cancelar</button>
-        <button type="submit" class="btn-create" form="register-form" id="btn-create">
-          <i data-lucide="user-plus"></i>
-          Crear usuario
-        </button>
-      </div>
+    </div>
     </div>
 
 <script>
@@ -133,44 +177,46 @@
     lucide.createIcons();
   }
 
-  function goBack() {
-    window.location.href = '/user_panel';
-  }
-
-  function handleSubmit(e) {
-    var password = document.getElementById('password').value;
-    var confirm = document.getElementById('confirm_password').value;
-
-    if (password !== confirm) {
-      e.preventDefault();
-      alert('Las contraseñas no coinciden.');
-      return;
-    }
-
-    if (window.location.protocol === 'file:') {
-      e.preventDefault();
-      var btn = document.getElementById('btn-create');
-      btn.disabled = true;
-      btn.innerHTML = '<i data-lucide="loader"></i> Creando...';
-      lucide.createIcons();
-      setTimeout(function() {
-        alert('Usuario creado correctamente (vista previa)');
-        window.location.href = '/user_panel';
-      }, 700);
-    }
-  }
-
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
-    });
-    document.addEventListener('click', function() {
-      menu.classList.remove('show');
+  function syncAdminPermissions(checkbox) {
+    var selects = document.querySelectorAll('.permission-select');
+    selects.forEach(function(select) {
+      if (checkbox.checked) {
+        select.value = 'editor';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+      }
     });
   }
+
+  (function() {
+    var checkbox = document.getElementById('admin-checkbox');
+    if (checkbox && checkbox.checked) {
+      syncAdminPermissions(checkbox);
+    }
+  })();
+
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    if (evt.detail.verb === 'post' && evt.detail.path === '/users') {
+      evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
+    }
+  });
+</script>
+
+<script type="module">
+  import { validateUser } from '/static/scripts/form-validation/user.js';
+
+  const form = document.getElementById('register-form');
+  // capture (true): corre antes que el listener de HTMX en el form.
+  // Si la validación falla:
+  // - preventDefault: cancela el submit nativo
+  // - stopImmediatePropagation: evita que HTMX vea el evento y dispare el POST
+  form?.addEventListener('submit', (e) => {
+    if (!validateUser()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
 </script>
 
 {{end}}

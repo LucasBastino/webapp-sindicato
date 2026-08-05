@@ -16,7 +16,7 @@ func registerMiddlewares(app *fiber.App, authMiddleware *auth.AuthMiddleware, lo
 	app.Use(middlewares.RecoverMiddleware(logger))
 	app.Use(httplogger.New())
 	app.Use(requestid.New())
-	app.Use(middlewares.TimeoutMiddleWare(5 * time.Second))
+	app.Use(middlewares.TimeoutMiddleWare(10 * time.Second))
 	app.Use(middlewares.LoggerMiddleware(logger))
 	app.Use(authMiddleware.VerifyAtomicLicense)
 

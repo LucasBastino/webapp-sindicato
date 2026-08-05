@@ -6,9 +6,8 @@ type tablePageData struct {
 	Parents      []response
 	TotalResults int
 	EmptyState   page.EmptyState
-
 	MemberID     int
-
+	MemberName   string
 	PageContext  page.PageContext
 }
 

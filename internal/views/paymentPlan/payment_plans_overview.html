@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planes de pago</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "payment-plans-overview-content" .}}
+  </main>
+
+</div>
+</body>
+</html>
+
+{{define "payment-plans-overview-content"}}
+
+    <div class="page-header affiliate-header">
+      <div>
+        <h1>Planes de pago</h1>
+        <p>Todos los planes de pago agrupados por empresa</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" type="button"
+                hx-get="/dashboard"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="arrow-left"></i>
+          Dashboard
+        </button>
+      </div>
+    </div>
+
+    {{if eq (len .Groups) 0}}
+      {{template "empty-state" .EmptyState}}
+    {{else}}
+    <div class="overdue-groups">
+      {{range .Groups}}
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+          <h3>{{.CompanyName}}</h3>
+          <span class="money" data-amount="{{printf "%.2f" .TotalAmount}}"></span>
+        </div>
+        <div class="list">
+          {{range .Plans}}
+          <div class="list-item" style="cursor:pointer;"
+               hx-get="/payment_plans/{{.ID}}"
+               hx-target="#main-content"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+            <div class="list-icon {{if eq .StatusKey "completed"}}blue{{else if eq .StatusKey "cancelled"}}gray{{else}}orange{{end}}">
+              <i data-lucide="credit-card"></i>
+            </div>
+            <div class="list-main">
+              <strong>{{.NumberOfInstallments}} cuotas · {{.Status}}</strong>
+              <span>{{.FirstDueDate}} — {{.LastDueDate}}</span>
+            </div>
+            <div class="list-right">
+              <span class="money" data-amount="{{printf "%.2f" .Amount}}"></span>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        <div style="padding:12px 16px 16px;">
+          <a href="/companies/{{.CompanyID}}/payment_plans"
+             hx-get="/companies/{{.CompanyID}}/payment_plans"
+             hx-target="#main-content"
+             hx-push-url="true">
+            Ver planes de la empresa
+          </a>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+<script>
+  lucide.createIcons();
+  document.querySelectorAll('.money').forEach(function (el) {
+    var n = Number(el.getAttribute('data-amount'));
+    if (Number.isNaN(n)) return;
+    el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  });
+</script>
+
+{{end}}

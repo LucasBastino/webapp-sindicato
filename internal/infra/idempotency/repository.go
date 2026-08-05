@@ -58,8 +58,7 @@ func (r *IdempotencyRepository) Create(ctx context.Context,	key string, requestH
 	return nil
 }
 
-func (r *IdempotencyRepository) UpdateResource(ctx context.Context, key string, resourceType string, resourceID int) error {
-
+func (r *IdempotencyRepository) UpdateResource(ctx context.Context, tx *sqlx.Tx, key string, resourceType string, resourceID int) error {
 	query := `
 	UPDATE idempotency_keys
 	SET
@@ -69,7 +68,7 @@ func (r *IdempotencyRepository) UpdateResource(ctx context.Context, key string, 
 		idempotency_key = ?
 	`
 
-	_, err := r.db.ExecContext(ctx, query, resourceType, resourceID, key)
+	_, err := tx.ExecContext(ctx, query, resourceType, resourceID, key)
 	if err != nil {
 		return fmt.Errorf("failed to update idempotency resource: %w", err)
 	}

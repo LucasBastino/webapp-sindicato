@@ -7,162 +7,182 @@ import (
 
 	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
 	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/app-sindicato/internal/validation"
 )
 
-func toModel(req request) (Payment, error) {
-	// monthInt, err := strconv.Atoi(req.Amount)
-	// if err!=nil{
-	// 	return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse month: %w", err), "")
-	// }
-	// yearInt, err := strconv.Atoi(req.Amount)
-	// if err!=nil{
-	// 	return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse year: %w", err), "")
-	// }
-	amount, err := strconv.ParseFloat(req.Amount, 32)
-	if err!=nil{
-		return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse amount: %w", err), "")
-	}
-	paidAt, err := time.Parse("02/01/2006", req.PaidAt)
-	if err!=nil{
-		return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse paid-at: %w", err), "")
-	}
-
-    return Payment{
-        // Month:        	monthInt,
-        // Year:         	yearInt,
-        // Status:  		req.Status,
-        Amount:       	float32(amount),
-        PaidAt:  		&paidAt,
-        Observations: 	req.Observations,
-    }, nil
+var monthNames = []string{
+	"", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+	"Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 }
 
-// cuando da error el formulario queriendo editar
-func mergetoResponse(p Payment, req request) (response, error) {
+func monthName(month int) string {
+	if month < 1 || month > 12 {
+		return ""
+	}
+	return monthNames[month]
+}
 
-	amount, err := strconv.ParseFloat(req.Amount, 32)
-	if err!=nil{
-		return response{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse amount: %w", err), "")
+func formatPaidAt(paidAt *time.Time) string {
+	if paidAt == nil {
+		return ""
+	}
+	return paidAt.Format("02/01/2006")
+}
+
+func amountValue(amount *float32) float32 {
+	if amount == nil {
+		return 0
+	}
+	return *amount
+}
+
+func toModel(req request) (Payment, error) {
+	normalizedAmount := v.NormalizeAmountInput(req.Amount)
+	amount, err := strconv.ParseFloat(normalizedAmount, 32)
+	if err != nil {
+		return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse amount: %w", err), "")
+	}
+	amt := float32(amount)
+
+	payment := Payment{
+		Amount:       &amt,
+		PaidAt:       nil,
+		Observations: req.Observations,
+	}
+
+	if !req.markedPaid() {
+		return payment, nil
+	}
+
+	paidAt, err := v.ParseDMY(req.PaidAt)
+	if err != nil {
+		return Payment{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse paid-at: %w", err), "")
+	}
+	payment.PaidAt = &paidAt
+	return payment, nil
+}
+
+func mergetoResponse(p Payment, req request) (response, error) {
+	normalizedAmount := v.NormalizeAmountInput(req.Amount)
+	amount, err := strconv.ParseFloat(normalizedAmount, 32)
+	if err != nil {
+		amount = float64(amountValue(p.Amount))
 	}
 	updatedPayment := p
-	if req.PaidAt == ""{
+	isPaid := req.markedPaid()
+	if !isPaid {
+		updatedPayment.PaidAt = nil
+	} else if req.PaidAt == "" {
 		updatedPayment.PaidAt = nil
 	} else {
-		paidAt, err := time.Parse("02/01/2006", req.PaidAt)
-		if err!=nil{
-			return response{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse paid-at: %w", err), "")
+		paidAt, err := v.ParseDMY(req.PaidAt)
+		if err != nil {
+			updatedPayment.PaidAt = nil
+		} else {
+			updatedPayment.PaidAt = &paidAt
 		}
-		updatedPayment.PaidAt = &paidAt
+	}
+
+	paidAtStr := formatPaidAt(updatedPayment.PaidAt)
+	if isPaid && req.PaidAt != "" {
+		paidAtStr = req.PaidAt
 	}
 
 	return response{
-		Month:       	p.Month,
-		Year:         	p.Year,
-		Status:			updatedPayment.GetStatus(),
-		Amount:       	pu.MergeField(p.Amount, float32(amount)),
-		PaidAt:  		pu.MergeField(p.PaidAt.Format("02/01/2006"), req.PaidAt),
-		Observations: 	pu.MergeField(p.Observations, req.Observations),
-		UpdatedAt:    	p.UpdatedAt.Format("02/01/2006"),
+		ID:              p.ID,
+		Month:           p.Month,
+		MonthName:       monthName(p.Month),
+		Year:            p.Year,
+		Status:          updatedPayment.GetStatus(),
+		Amount:          pu.MergeField(amountValue(p.Amount), float32(amount)),
+		PaidAt:          paidAtStr,
+		IsPaid:          isPaid,
+		Observations:    pu.MergeField(p.Observations, req.Observations),
+		IsInPaymentPlan: p.IsInPaymentPlan,
+		UpdatedAt:       p.UpdatedAt.Format("02/01/2006"),
 	}, nil
 }
 
 func toResponse(p Payment) response {
-    return response{
-        Month:        p.Month,
-        Year:         p.Year,
-        Status:       p.GetStatus(),
-        Amount:       p.Amount,
-        PaidAt:  	  p.PaidAt.Format("02/01/2006"),
-        Observations: p.Observations,
-        UpdatedAt:    p.UpdatedAt.Format("02/01/2006"),
-    }
-}
-
-// func toResponses(payments []Payment) []response{
-// 	Responses := make([]response, len(payments))
-// 	for i, paymentModel := range payments{
-// 		Responses[i] = toResponse(paymentModel)
-// 	}
-// 	return Responses
-// }
-
-func toGridResponse(p Payment) gridResponse {
-	return gridResponse{
-		Month:       p.Month,
-		Year:        p.Year,
-		Status:      p.GetStatus(),
-		Amount:      p.Amount,
-		PaidAt: 	 p.PaidAt.Format("02/01/2006"),
+	return response{
+		ID:              p.ID,
+		Month:           p.Month,
+		MonthName:       monthName(p.Month),
+		Year:            p.Year,
+		Status:          p.GetStatus(),
+		Amount:          amountValue(p.Amount),
+		PaidAt:          formatPaidAt(p.PaidAt),
+		IsPaid:          p.PaidAt != nil,
+		Observations:    p.Observations,
+		IsInPaymentPlan: p.IsInPaymentPlan,
+		UpdatedAt:       p.UpdatedAt.Format("02/01/2006"),
 	}
 }
 
-func toGridResponses(payments []Payment) []gridResponse{
+func toGridResponse(p Payment) gridResponse {
+	status := p.GetStatus()
+	dueDate := p.DueDate.Format("02/01/2006")
+	paidAt := formatPaidAt(p.PaidAt)
+
+	dateLabel := dueDate
+	switch status {
+	case "Completado":
+		if paidAt != "" {
+			dateLabel = paidAt
+		}
+	case "Vencido":
+		if dueDate != "" {
+			dateLabel = "Venció el " + dueDate
+		}
+	case "Pendiente":
+		if dueDate != "" {
+			dateLabel = "Vence el " + dueDate
+		}
+	case "En plan de pago":
+		if dueDate != "" {
+			dateLabel = dueDate
+		}
+	}
+
+	return gridResponse{
+		ID:        p.ID,
+		Month:     p.Month,
+		MonthName: monthName(p.Month),
+		Year:      p.Year,
+		Status:    status,
+		Amount:    amountValue(p.Amount),
+		PaidAt:    paidAt,
+		DueDate:   dueDate,
+		DateLabel: dateLabel,
+	}
+}
+
+func toGridResponses(payments []Payment) []gridResponse {
 	responses := make([]gridResponse, len(payments))
-	for i, payment := range payments{
+	for i, payment := range payments {
 		responses[i] = toGridResponse(payment)
 	}
 	return responses
 }
 
-/* 
-type PaymentParser struct{}
-
-func (parser PaymentParser) ParseModel(c *fiber.Ctx) (Payment, error) {
-	p := Payment{}
-	p.Month = strings.TrimSpace(c.FormValue("month"))
-	p.Year = strings.TrimSpace(c.FormValue("year"))
-	status, err := strconv.ParseBool(strings.TrimSpace(c.FormValue("status")))
-	if err != nil {
-		customError.InternalError.Msg = err.Error()
-		return Payment{}, errorHandler.HandleError(c, customError.InternalError)
-	}
-	p.Status = status
-	AmountStr := strings.TrimSpace(c.FormValue("amount"))
-	if AmountStr != "" {
-		Amount, err := strconv.Atoi(AmountStr)
-		if err != nil {
-			customError.StrConvError.Msg = err.Error()
-			return Payment{}, customError.StrConvError
+func buildGridStats(payments []Payment) gridStats {
+	var stats gridStats
+	for _, p := range payments {
+		amount := amountValue(p.Amount)
+		switch p.GetStatus() {
+		case "Completado":
+			stats.CompletedCount++
+			stats.CompletedAmount += amount
+		case "En plan de pago":
+			stats.InPlanCount++
+			stats.InPlanAmount += amount
+		case "Vencido":
+			stats.OverdueCount++
+			stats.OverdueAmount += amount
+		default:
+			stats.PendingCount++
+			stats.PendingAmount += amount
 		}
-		p.Amount = Amount
 	}
-	p.PaidAt = strings.TrimSpace(c.FormValue("paid-at"))
-	p.Observations = strings.TrimSpace(c.FormValue("observations"))
-	CompanyIDStr := strings.TrimSpace(c.FormValue("id-company"))
-	CompanyID, err := strconv.Atoi(CompanyIDStr)
-	if err != nil {
-		customError.StrConvError.Msg = err.Error()
-		return Payment{}, err
-	}
-	p.CompanyID = CompanyID
-
-	return p, nil
+	return stats
 }
- */
-
-
-
-// // cuando da error el formulario en el frontend
-// func toResponseFromRequest(req request) response {
-// 	// var status bool
-// 	// if req.Status == "true"{
-// 	// 	status = true
-// 	// } else {
-// 	// 	status = false
-// 	// }
-// 	// ya estan validados, no hace falta chequear el error
-// 	amountInt, _ := strconv.Atoi(req.Amount)
-// 	companyIDInt, _ := strconv.Atoi(req.CompanyID)
-// 	monthInt, _ := strconv.Atoi(req.Month)
-// 	yearInt, _ := strconv.Atoi(req.Year)
-
-//     return response{
-//         Month:       	monthInt,
-//         Year:         	yearInt,
-//         Status:  status,
-//         Amount:      	amountInt,
-//         PaidAt:  	req.PaidAt,
-//         Observations: 	req.Observations,
-//         CompanyID: 	companyIDInt,
-// 	}
-// }

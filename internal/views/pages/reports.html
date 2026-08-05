@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reportes</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+
+<body>
+
+<div class="layout">
+
+  {{template "sidebar" .PageContext}}
+
+  <main class="content" id="main-content">
+    {{template "reports-content" .}}
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>
+
+{{define "reports-content"}}
+
+    <div class="page-header">
+      <h1>Reportes</h1>
+      <p>Consultá listados e informes de tu organización.</p>
+    </div>
+
+    <section class="reports-list">
+      {{if .PageContext.UserAuthInfo.CanView "member"}}
+      <div class="card report-option-card" style="cursor:pointer;"
+           hx-get="/members?view=electoral_list"
+           hx-target="#main-content"
+           hx-push-url="true">
+        <div class="stat-icon orange">
+          <i data-lucide="clipboard-list"></i>
+        </div>
+        <div class="stat-content">
+          <h3>Padrón electoral</h3>
+          <p>Listado de afiliados habilitados para el padrón electoral.</p>
+        </div>
+        <i data-lucide="chevron-right" class="report-option-chevron"></i>
+      </div>
+      {{end}}
+
+      {{if .PageContext.UserAuthInfo.CanView "company"}}
+      <div class="card report-option-card" style="cursor:pointer;"
+           hx-get="/payments/overdue"
+           hx-target="#main-content"
+           hx-push-url="true">
+        <div class="stat-icon" style="background:#fee2e2;color:#dc2626;">
+          <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-content">
+          <h3>Pagos vencidos</h3>
+          <p>Pagos pendientes cuya fecha de vencimiento ya pasó, agrupados por empresa.</p>
+        </div>
+        <i data-lucide="chevron-right" class="report-option-chevron"></i>
+      </div>
+
+      <div class="card report-option-card" style="cursor:pointer;"
+           hx-get="/payment_plans/overview"
+           hx-target="#main-content"
+           hx-push-url="true">
+        <div class="stat-icon orange">
+          <i data-lucide="credit-card"></i>
+        </div>
+        <div class="stat-content">
+          <h3>Planes de pago</h3>
+          <p>Todos los planes de pago agrupados por empresa.</p>
+        </div>
+        <i data-lucide="chevron-right" class="report-option-chevron"></i>
+      </div>
+      {{end}}
+
+      {{if and (not (.PageContext.UserAuthInfo.CanView "member")) (not (.PageContext.UserAuthInfo.CanView "company"))}}
+      <p class="empty-list-hint">No tenés permisos para ver reportes disponibles.</p>
+      {{end}}
+    </section>
+
+    <script>
+      lucide.createIcons();
+    </script>
+
+{{end}}

@@ -30,7 +30,7 @@ func NewUserRepository(db *sqlx.DB) *UserRepository{
 
 
 func (r *UserRepository) FindByID(ctx context.Context, id int) (*User, error) {
-	query := "SELECT id_user, username, admin, resource_roles FROM users WHERE id_user = ?";
+	query := "SELECT id_user, username, password_hash, admin, resource_roles, created_at FROM users WHERE id_user = ?"
 	var user User
 	err := r.db.GetContext(ctx, &user, query, id)
 	if err != nil {
@@ -66,7 +66,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 func (r *UserRepository) FindAll(ctx context.Context) ([]User, error) {
-    query := "SELECT id_user, username, admin, resource_roles FROM users"
+    query := "SELECT id_user, username, admin, resource_roles, created_at FROM users"
     var users []User
     err := r.db.SelectContext(ctx, &users, query)
     if err != nil {
@@ -76,9 +76,9 @@ func (r *UserRepository) FindAll(ctx context.Context) ([]User, error) {
 }
 
 
-func (r *UserRepository) Insert(ctx context.Context, user User) (int, error) {
+func (r *UserRepository) Insert(ctx context.Context, tx *sqlx.Tx, user User) (int, error) {
 	query := "INSERT INTO users (username, password_hash, admin, resource_roles) VALUES (:username, :password_hash, :admin, :resource_roles)"
-	res, err := r.db.NamedExecContext(ctx, query, user)
+	res, err := tx.NamedExecContext(ctx, query, user)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert user: %w", err)
 	}
@@ -87,6 +87,10 @@ func (r *UserRepository) Insert(ctx context.Context, user User) (int, error) {
 		return 0, fmt.Errorf("failed to get last insert id while inserting user: %w", err)
 	}
 	return int(id), nil
+}
+
+func (r *UserRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+	return r.db.BeginTxx(ctx, nil)
 }
 
 
@@ -107,12 +111,16 @@ func (r *UserRepository) Insert(ctx context.Context, user User) (int, error) {
 
 
 func (r *UserRepository) UpdatePermissions(ctx context.Context, id int, admin bool, resourceRoles map[string]any) error {
-    query := "UPDATE users SET admin = ?, resource_roles = ? WHERE id_user = ?"
-	_, err := r.db.ExecContext(ctx, query, admin, resourceRoles, id)
-    if err != nil {
-        return fmt.Errorf("failed to update user permissions: %w", err)
-    }
-    return nil
+	rolesJSON, err := json.Marshal(resourceRoles)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource roles: %w", err)
+	}
+	query := "UPDATE users SET admin = ?, resource_roles = ? WHERE id_user = ?"
+	_, err = r.db.ExecContext(ctx, query, admin, rolesJSON, id)
+	if err != nil {
+		return fmt.Errorf("failed to update user permissions: %w", err)
+	}
+	return nil
 }
 
 func (r *UserRepository) UpdatePassword(ctx context.Context, id int, hash string) (int, error) {

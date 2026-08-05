@@ -58,7 +58,7 @@ func NewBusinessError(err error, clientMsg string) *AppError {
 
 func NewNotFoundError(err error, clientMsg string) *AppError {
 	if clientMsg == "" {
-		clientMsg = "No se encontró el recurso solicitado."
+		clientMsg = "El registro al que desea acceder no existe."
 	}
 	return NewAppError(
 		err,

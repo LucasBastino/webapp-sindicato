@@ -21,10 +21,10 @@ func buildCompanyFilters(baseQuery string, filters companyFilters) (string, []an
 		query += " AND 1=0 "
 	}
 
-	if filters.searchKey != "" {
-		like := filters.searchKey + "%"
+	if key := strings.TrimSpace(filters.searchKey); key != "" {
+		like := "%" + key + "%"
 		query += " AND (name LIKE ? OR company_number LIKE ?)"
-		args = append(args, like, like, like)
+		args = append(args, like, like)
 	}
 	
 	return query, args

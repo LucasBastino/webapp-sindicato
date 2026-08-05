@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -47,7 +48,7 @@ func (r *CompanyRepository) Search(ctx context.Context, filters companyFilters, 
 }
 
 func (r *CompanyRepository) SearchForSelect(ctx context.Context, searchKey string) ([]Company, error){
-	like := searchKey + "%" 
+	like := "%" + strings.TrimSpace(searchKey) + "%"
 
 	query := `
 	SELECT
@@ -90,6 +91,31 @@ func (r *CompanyRepository) Count(ctx context.Context, filters companyFilters) (
 		return 0, fmt.Errorf("failed to get total rows while searching companies: %w", err)
 	}
 	return totalRows, nil
+}
+
+func (r *CompanyRepository) FindRecent(ctx context.Context, limit int) ([]RecentCompany, error) {
+	query := `
+	SELECT
+		C.id_company,
+		C.name,
+		C.created_at,
+		(
+			SELECT COUNT(*)
+			FROM members M
+			WHERE M.id_company = C.id_company
+				AND M.deleted_at IS NULL
+		) AS member_count
+	FROM companies C
+	WHERE C.deleted_at IS NULL
+	ORDER BY C.created_at DESC
+	LIMIT ?
+	`
+	var companies []RecentCompany
+	err := r.db.SelectContext(ctx, &companies, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recent companies: %w", err)
+	}
+	return companies, nil
 }
 
 

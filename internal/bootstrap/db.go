@@ -332,7 +332,7 @@ func ensurePayments(db *sqlx.DB) error {
 
 		month INT UNSIGNED NOT NULL,
 		year INT UNSIGNED NOT NULL,
-		due_date DATE,
+		due_date DATE NOT NULL,
 		amount DECIMAL(10,2),
 		paid_at DATE DEFAULT null,
 		is_in_payment_plan BOOLEAN NOT NULL DEFAULT false ,
@@ -381,6 +381,7 @@ func ensurePaymentPlans(db *sqlx.DB) error {
 		payments_in_plan VARCHAR(200),
 		amount DECIMAL NOT NULL,
 		number_of_installments INT,
+		status VARCHAR(20) NOT NULL DEFAULT 'pending',
 		first_due_date DATE NOT NULL,
 		last_due_date DATE NOT NULL,
 
@@ -391,8 +392,18 @@ func ensurePaymentPlans(db *sqlx.DB) error {
 
 		FOREIGN KEY (id_company) REFERENCES companies(id_company) ON DELETE CASCADE
 	)`)
-	if err!=nil{
+	if err != nil {
 		return fmt.Errorf("failed to create payment plans table: %w", err)
+	}
+
+	// Existing DBs created before status existed.
+	_, err = db.Exec(`ALTER TABLE payment_plans ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'`)
+	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		// 1060 = duplicate column
+		if !(errors.As(err, &mysqlErr) && mysqlErr.Number == 1060) {
+			return fmt.Errorf("failed to add payment_plans.status: %w", err)
+		}
 	}
 	return nil
 }
@@ -427,7 +438,7 @@ func ensureInstallments(db *sqlx.DB) error {
 		installment_number INT NOT NULL,
 		amount DECIMAL(10,2) NOT NULL,
 		due_date DATE NOT NULL,
-		paid_at DATE DEFAULT null,
+		paid_at DATE DEFAULT NULL,
 
 		observations VARCHAR(2000),
 
@@ -575,8 +586,7 @@ func ensureDefaultAdmin(db *sqlx.DB) error {
 
 	resourceRoles := map[string]any{
 		"company": "editor",
-		"member": "editor",
-		"payment": "editor",
+		"member":  "editor",
 	}
 
 	resourceRolesJSON, err := json.Marshal(resourceRoles)

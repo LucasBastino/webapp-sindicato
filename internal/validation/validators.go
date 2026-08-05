@@ -1,6 +1,7 @@
-package validationFuncs
+package validation
 
 import (
+	"slices"
 	"strings"
 	"time"
 )
@@ -36,7 +37,7 @@ func ValidateDni(input string) string {
 
 func ValidateBirthday(input string) string {
 	if input == "" { 
-		return ""
+		return "Campo requerido."
 	}
 	min := time.Date(1900, 0, 0, 0, 0, 0, 0, time.UTC)
 	max := time.Now()
@@ -168,6 +169,7 @@ func ValidatePhone(input string) string {
 	return isNotLongerThan(input, 20)
 }
 
+// todo: cambiar en js
 func ValidateEmail(input string) string {
 	if input == "" {
 		return ""
@@ -190,13 +192,20 @@ func ValidateEmail(input string) string {
 		}
 	
 	domainParts := strings.Split(domain, ".")
+	if slices.Contains(domainParts, ""){
+		return "Formato no válido." // cubre "".gmail.com", "gmail."", "gmail..com"
+	}
 	// si no tiene algo antes y despues del punto ||
 	// si la ultima parte (el TLD) no tiene minimo 2 caracteres no es válido
 	if len(domainParts) < 2 || len(domainParts[len(domainParts)-1]) < 2 {
 		return "Formato no válido."
 	}
+	domain = removeChars(domain, ".")
+	if errMsg := isAlphanumeric(domain); errMsg != "" {
+		return errMsg
+	}
 
-	input = removeChars(input, "!#$%&'*+-/=?^_`{|}~.")
+	input = removeChars(input, "!#$%&'*+-/=?^_`{|}~.@")
 	if errMsg := isAlphanumeric(input); errMsg != "" {
 		return errMsg
 	}
@@ -220,10 +229,9 @@ func ValidateMemberNumber(input string) string {
 
 func ValidateCompanyID(input string) string {
 	if input == "" {
-		return ""
+		return "Campo requerido."
 	}
 	
-	// puede permitirse campo vacio por si se borra alguna empresa
 	if errMsg := isNumeric(input); errMsg != "" {
 		return errMsg
 	}
@@ -261,6 +269,9 @@ func ValidateEntryDate(input string) string {
 }
 
 func ValidateCompanyName(input string) string {
+	if input == "" {
+		return "Campo requerido."
+	}
 	return isNotLongerThan(input, 150)
 }
 
@@ -300,7 +311,10 @@ func ValidateCuilCuit(input string) string {
 		prefix, dni, digit := parts[0], parts[1], parts[2]
 		if (len(prefix) != 2 ||	len(dni) != 8 || len(digit) != 1){
 			return "Formato no válido."
+		} else{
+			return ""
 		}
+
 	}
 	if errMsg := isNumeric(input); errMsg != "" {
 		return errMsg
@@ -381,14 +395,14 @@ func ValidateAmount(input string) string {
 		return ""
 	}
 
-	v := strings.ReplaceAll(input, ",", ".")
+	normalized := NormalizeAmountInput(input)
 
-	if strings.Contains(v, "."){
-		if strings.HasPrefix(v, ".") || strings.HasSuffix(v, ".") {
+	if strings.Contains(normalized, ".") {
+		if strings.HasPrefix(normalized, ".") || strings.HasSuffix(normalized, ".") {
 			return "Formato no válido."
 		}
-		
-		parts := strings.Split(v, ".")
+
+		parts := strings.Split(normalized, ".")
 		if len(parts) != 2 {
 			return "Formato no válido."
 		}
@@ -399,13 +413,25 @@ func ValidateAmount(input string) string {
 		}
 	}
 
-	input = removeChars(v, ".")
+	digits := removeChars(normalized, ".")
 
-	if errMsg := isNumeric(v); errMsg != "" {
+	if errMsg := isNumeric(digits); errMsg != "" {
 		return errMsg
 	}
 
-	return isNotLongerThan(v, 20)
+	return isNotLongerThan(digits, 20)
+}
+
+// NormalizeAmountInput converts a user amount string to a ParseFloat-ready value.
+// With comma: Argentine style (dots = thousands, comma = decimal).
+// Without comma: dot is treated as decimal separator.
+func NormalizeAmountInput(input string) string {
+	input = strings.TrimSpace(input)
+	if strings.Contains(input, ",") {
+		input = strings.ReplaceAll(input, ".", "")
+		return strings.ReplaceAll(input, ",", ".")
+	}
+	return input
 }
 
 
@@ -454,6 +480,11 @@ func ValidateUsername(input string) string{
 	if errMsg := isAlphanumeric(input); errMsg != "" {
 		return errMsg
 	}
+
+	if errMsg := hasAtLeast(input, 3); errMsg != "" {
+		return errMsg
+	}
+
 	return isNotLongerThan(input, 20)
 }
 
@@ -462,9 +493,15 @@ func ValidatePassword(input string) string{
 		return "Campo requerido."
 	}
 	input = removeChars(input, " #-'&,.!?*+")
+
 	if errMsg := isAlphanumeric(input); errMsg != "" {
 		return errMsg
 	}
+
+	if errMsg := hasAtLeast(input, 8); errMsg != "" {
+		return errMsg
+	}
+
 	return isNotLongerThan(input, 20)
 }
 

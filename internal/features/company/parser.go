@@ -48,6 +48,7 @@ func toResponse(e Company) response {
         Observations:    e.Observations,
         CreatedAt:       e.CreatedAt.Format("02/01/2006"),
         UpdatedAt:       e.UpdatedAt.Format("02/01/2006"),
+		IsDeleted:       e.DeletedAt != nil,
     }
 }
 

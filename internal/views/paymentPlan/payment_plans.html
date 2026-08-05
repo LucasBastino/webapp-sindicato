@@ -25,246 +25,123 @@
   </main>
 
 </div>
+
+<script>
+  lucide.createIcons();
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
 </body>
 </html>
 
 {{define "payment-plans-content"}}
 
-    <div class="table-header">
-      <h1>Planes de Pago</h1>
-      <div class="table-actions">
-        <div class="search-wrapper">
-          <i data-lucide="search"></i>
-          <input type="text" id="search-input" placeholder="Buscar planes...">
-        </div>
-        <button class="btn btn-primary btn-add-table" id="btn-add" onclick="createPlan()">
-          <i data-lucide="plus"></i>
-          Crear plan
-        </button>
-      </div>
-    </div>
-
-    <div class="card table-card">
-      <div class="table-wrapper">
-        <table class="affiliate-table">
-          <thead>
-            <tr>
-              <th>Empresa</th>
-              <th>Deuda original</th>
-              <th>Total plan</th>
-              <th>Cuotas</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="plans-table-body">
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="pagination" id="pagination"></div>
-
-<!-- DELETE MODAL -->
-
-<div class="modal-overlay" id="modal-delete">
-  <div class="modal">
-    <h3>Cancelar plan</h3>
-    <p>¿Estás seguro de cancelar este plan de pago? Esta acción no se puede deshacer.</p>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
-      <button class="btn btn-danger" id="modal-confirm">Cancelar plan</button>
-    </div>
+<div class="page-header affiliate-header">
+  <h1 class="title-sm">Planes de pago de la empresa</h1>
+  <div class="header-actions">
+    <button class="btn btn-secondary" type="button"
+            hx-get="/companies/{{.CompanyID}}"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="arrow-left"></i>
+      Ficha de la empresa
+    </button>
+    <button class="btn btn-secondary" type="button"
+            hx-get="/companies/{{.CompanyID}}/payments"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="file-text"></i>
+      Ver pagos
+    </button>
+    {{if ne (len .PaymentPlans) 0}}
+    {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+    <button class="btn btn-primary" type="button"
+            hx-get="/companies/{{.CompanyID}}/payment_plans/new"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="plus"></i>
+      Crear plan
+    </button>
+    {{end}}
+    {{end}}
   </div>
+</div>
+
+<div class="card table-card">
+  {{if eq (len .PaymentPlans) 0}}
+    {{template "empty-state" .EmptyState}}
+  {{else}}
+  <div class="table-wrapper">
+    <table class="affiliate-table payment-plans-table">
+      <thead>
+        <tr>
+          <th>Monto</th>
+          <th class="col-center">Cuotas</th>
+          <th class="col-center">Primera cuota</th>
+          <th class="col-center">Última cuota</th>
+          <th class="col-estado">Estado</th>
+          <th class="col-action">Ficha</th>
+          {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+          <th class="col-action">Acción</th>
+          {{end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{range .PaymentPlans}}
+        <tr>
+          <td class="col-name">$ {{formatAmountAR .Amount}}</td>
+          <td class="col-center">{{.NumberOfInstallments}}</td>
+          <td class="col-center">{{.FirstDueDate}}</td>
+          <td class="col-center">{{.LastDueDate}}</td>
+          <td class="col-estado">
+            <span class="row-badge {{.StatusBadgeClass}}">{{.StatusLabel}}</span>
+          </td>
+          <td class="col-action">
+            <button class="table-btn blue" type="button"
+                    hx-get="/payment_plans/{{.ID}}"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    hx-push-url="true"
+                    title="Ver plan">
+              <i data-lucide="file-text"></i>
+            </button>
+          </td>
+          {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+          <td class="col-action">
+            {{if eq .Status "pending"}}
+            <button class="table-btn red" type="button"
+                    hx-post="/payment_plans/{{.ID}}/cancel"
+                    hx-headers='{"view": "table"}'
+                    hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    title="Cancelar plan">
+              <i data-lucide="x-circle"></i>
+            </button>
+            {{else if eq .Status "cancelled"}}
+            <button class="table-btn red" type="button"
+                    hx-delete="/payment_plans/{{.ID}}/permanent"
+                    hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    title="Eliminar plan">
+              <i data-lucide="trash-2"></i>
+            </button>
+            {{end}}
+          </td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
 </div>
 
 <script>
   lucide.createIcons();
-
-  var plans = [
-    { id: 1, empresa: 'Constructora Norte S.A.', deuda: 15000000, total: 18000000, cuotas: 12, estado: 'Activo' },
-    { id: 2, empresa: 'Empresa del Sur S.A.', deuda: 8000000, total: 9200000, cuotas: 6, estado: 'Activo' },
-    { id: 3, empresa: 'Servicios Generales SRL', deuda: 5000000, total: 5500000, cuotas: 3, estado: 'Completado' },
-    { id: 4, empresa: 'Distribuidora Central', deuda: 12000000, total: 14400000, cuotas: 12, estado: 'Cancelado' }
-  ];
-
-  var currentPage = 1;
-  var itemsPerPage = 5;
-  var deleteTargetId = null;
-  var filteredPlans = plans.slice();
-
-  function renderTable() {
-    var tbody = document.getElementById('plans-table-body');
-    var start = (currentPage - 1) * itemsPerPage;
-    var end = start + itemsPerPage;
-    var pageData = filteredPlans.slice(start, end);
-
-    tbody.innerHTML = '';
-
-    if (pageData.length === 0) {
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="6" style="text-align:center;padding:40px;color:#64748b;">No se encontraron planes</td>';
-      tbody.appendChild(tr);
-      return;
-    }
-
-    pageData.forEach(function(plan) {
-      var estadoClass = plan.estado === 'Activo' ? 'active' : (plan.estado === 'Completado' ? 'active' : '');
-      var estadoStyle = plan.estado === 'Cancelado' ? 'background:#fee2e2;color:#dc2626;' : '';
-
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td class="col-name">' + plan.empresa + '</td>' +
-        '<td class="col-dni">$ ' + plan.deuda.toLocaleString('es-AR') + '</td>' +
-        '<td>$ ' + plan.total.toLocaleString('es-AR') + '</td>' +
-        '<td>' + plan.cuotas + ' cuotas</td>' +
-        '<td><span class="status ' + estadoClass + '" style="' + estadoStyle + '">' + plan.estado + '</span></td>' +
-        '<td class="col-action">' +
-          '<button class="table-btn blue" onclick="viewPlan(' + plan.id + ')" title="Ver plan">' +
-            '<i data-lucide="eye"></i>' +
-          '</button>' +
-          '<button class="table-btn red" onclick="showDeleteModal(' + plan.id + ')" title="Cancelar plan" style="margin-left:6px;">' +
-            '<i data-lucide="x"></i>' +
-          '</button>' +
-        '</td>';
-      tbody.appendChild(tr);
-    });
-
-    lucide.createIcons();
-  }
-
-  function renderPagination() {
-    var pagination = document.getElementById('pagination');
-    var totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
-
-    pagination.innerHTML = '';
-
-    if (totalPages <= 1) {
-      return;
-    }
-
-    var firstBtn = document.createElement('button');
-    firstBtn.className = 'page-btn';
-    firstBtn.innerHTML = '<i data-lucide="chevrons-left"></i>';
-    firstBtn.onclick = function() { goToPage(1); };
-    firstBtn.disabled = currentPage === 1;
-    pagination.appendChild(firstBtn);
-
-    var prevBtn = document.createElement('button');
-    prevBtn.className = 'page-btn';
-    prevBtn.innerHTML = '<i data-lucide="chevron-left"></i>';
-    prevBtn.onclick = function() { goToPage(currentPage - 1); };
-    prevBtn.disabled = currentPage === 1;
-    pagination.appendChild(prevBtn);
-
-    var startPage = Math.max(1, currentPage - 2);
-    var endPage = Math.min(totalPages, currentPage + 2);
-
-    for (var i = startPage; i <= endPage; i++) {
-      var btn = document.createElement('button');
-      btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-      btn.innerHTML = i;
-      btn.onclick = function() { goToPage(parseInt(this.innerHTML)); };
-      pagination.appendChild(btn);
-    }
-
-    var nextBtn = document.createElement('button');
-    nextBtn.className = 'page-btn';
-    nextBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
-    nextBtn.onclick = function() { goToPage(currentPage + 1); };
-    nextBtn.disabled = currentPage === totalPages;
-    pagination.appendChild(nextBtn);
-
-    var lastBtn = document.createElement('button');
-    lastBtn.className = 'page-btn';
-    lastBtn.innerHTML = '<i data-lucide="chevrons-right"></i>';
-    lastBtn.onclick = function() { goToPage(totalPages); };
-    lastBtn.disabled = currentPage === totalPages;
-    pagination.appendChild(lastBtn);
-
-    lucide.createIcons();
-  }
-
-  function goToPage(page) {
-    var totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
-    if (page < 1 || page > totalPages) return;
-    currentPage = page;
-    renderTable();
-    renderPagination();
-  }
-
-  function viewPlan(id) {
-    window.location.href = 'paymentPlan.html';
-  }
-
-  function showDeleteModal(id) {
-    deleteTargetId = id;
-    document.getElementById('modal-delete').classList.add('show');
-  }
-
-  function hideDeleteModal() {
-    deleteTargetId = null;
-    document.getElementById('modal-delete').classList.remove('show');
-  }
-
-  function confirmDelete() {
-    if (deleteTargetId === null) return;
-
-    var index = filteredPlans.findIndex(function(a) { return a.id === deleteTargetId; });
-    if (index > -1) {
-      filteredPlans[index].estado = 'Cancelado';
-    }
-
-    hideDeleteModal();
-    renderTable();
-  }
-
-  function createPlan() {
-    window.location.href = 'createPaymentPlan.html';
-  }
-
-  document.getElementById('search-input').addEventListener('keyup', function() {
-    var query = this.value.toLowerCase().trim();
-
-    if (query === '') {
-      filteredPlans = plans.slice();
-    } else {
-      filteredPlans = plans.filter(function(plan) {
-        return plan.empresa.toLowerCase().indexOf(query) > -1 ||
-               plan.estado.toLowerCase().indexOf(query) > -1;
-      });
-    }
-
-    currentPage = 1;
-    renderTable();
-    renderPagination();
-  });
-
-  document.getElementById('modal-cancel').addEventListener('click', hideDeleteModal);
-  document.getElementById('modal-confirm').addEventListener('click', confirmDelete);
-
-  document.getElementById('modal-delete').addEventListener('click', function(e) {
-    if (e.target === this) {
-      hideDeleteModal();
-    }
-  });
-
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
-
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
-    });
-
-    document.addEventListener('click', function() {
-      menu.classList.remove('show');
-    });
-  }
-
-  renderTable();
-  renderPagination();
 </script>
 
 {{end}}

@@ -11,6 +11,7 @@
     <nav>
 
       <a href="/dashboard"
+         data-section="dashboard"
          hx-get="/dashboard"
          hx-target="#main-content"
          hx-swap="innerHTML"
@@ -20,7 +21,9 @@
         Dashboard
       </a>
 
+      {{if .UserAuthInfo.CanView "member"}}
       <a href="/members"
+         data-section="members"
          hx-get="/members"
          hx-target="#main-content"
          hx-swap="innerHTML"
@@ -29,8 +32,11 @@
         <i data-lucide="users"></i>
         Afiliados
       </a>
+      {{end}}
 
+      {{if .UserAuthInfo.CanView "company"}}
       <a href="/companies"
+         data-section="companies"
          hx-get="/companies"
          hx-target="#main-content"
          hx-swap="innerHTML"
@@ -39,14 +45,22 @@
         <i data-lucide="building-2"></i>
         Empresas
       </a>
+      {{end}}
 
-      <a href="#" {{if eq .ActiveSection "reports"}}class="active"{{end}}>
+      <a href="/reports"
+         data-section="reports"
+         hx-get="/reports"
+         hx-target="#main-content"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         {{if eq .ActiveSection "reports"}}class="active"{{end}}>
         <i data-lucide="file-text"></i>
         Reportes
       </a>
 
       {{if .UserAuthInfo.Admin}}
       <a href="/user_panel"
+         data-section="users"
          hx-get="/user_panel"
          hx-target="#main-content"
          hx-swap="innerHTML"
@@ -63,22 +77,34 @@
 
   <div class="sidebar-footer">
 
-    <div class="support">
+    <div class="support"
+         role="button"
+         tabindex="0"
+         hx-get="/support"
+         hx-target="#app-modal-container"
+         hx-swap="innerHTML"
+         title="Centro de soporte">
       <i data-lucide="circle-help"></i>
       <span>Soporte</span>
     </div>
 
     <div class="profile-dropdown" id="profile-dropdown">
       <div class="profile-trigger">
-        <div class="avatar">AD</div>
+        <div class="avatar">{{if ge (len .UserAuthInfo.Username) 2}}{{slice .UserAuthInfo.Username 0 2}}{{else}}{{.UserAuthInfo.Username}}{{end}}</div>
         <div class="profile-info">
-          <strong>Admin</strong>
-          <span>admin@miorganizacion.com</span>
+          <strong>{{.UserAuthInfo.Username}}</strong>
+          <span class="role">{{if .UserAuthInfo.Admin}}Administrador{{else}}Usuario{{end}}</span>
         </div>
         <i data-lucide="chevron-down"></i>
       </div>
       <div class="dropdown-menu" id="dropdown-menu">
-        <a href="#"><i data-lucide="user"></i> Mi perfil</a>
+        <a href="#"
+           hx-get="/users/{{.UserAuthInfo.UserID}}/change-password"
+           hx-target="#app-modal-container"
+           hx-swap="innerHTML"
+           onclick="event.preventDefault()">
+          <i data-lucide="key-round"></i> Cambiar contraseña
+        </a>
         <a href="/login" class="danger"><i data-lucide="log-out"></i> Cerrar sesión</a>
       </div>
     </div>
@@ -86,4 +112,53 @@
   </div>
 
 </aside>
+
+<div id="app-modal-container"></div>
+
+<script>
+(function() {
+  function sectionFromPath(path) {
+    var params = new URLSearchParams(window.location.search);
+    if (path.startsWith('/members') && params.get('view') === 'electoral_list') return 'reports';
+    if (path.startsWith('/payment_plans/overview') || path.startsWith('/payments/overdue')) return 'reports';
+    if (path.startsWith('/companies')) return 'companies';
+    if (path.startsWith('/members') || path.startsWith('/parents')) return 'members';
+    if (path.startsWith('/user_panel') || path.startsWith('/users')) return 'users';
+    if (path.startsWith('/reports')) return 'reports';
+    if (path.startsWith('/dashboard') || path === '/') return 'dashboard';
+    return '';
+  }
+
+  function syncSidebarActive() {
+    var section = sectionFromPath(window.location.pathname);
+    document.querySelectorAll('.sidebar nav a').forEach(function(a) {
+      a.classList.toggle('active', a.getAttribute('data-section') === section);
+    });
+  }
+
+  syncSidebarActive();
+  document.body.addEventListener('htmx:pushedIntoHistory', syncSidebarActive);
+  document.body.addEventListener('htmx:afterSettle', syncSidebarActive);
+
+  // Profile dropdown (must live in sidebar — not all full pages wire it)
+  if (!window.__profileDropdownBound) {
+    window.__profileDropdownBound = true;
+    document.addEventListener('click', function(e) {
+      var dropdown = document.getElementById('profile-dropdown');
+      var menu = document.getElementById('dropdown-menu');
+      if (!dropdown || !menu) return;
+
+      var trigger = e.target.closest('.profile-trigger');
+      if (trigger && dropdown.contains(trigger)) {
+        e.stopPropagation();
+        menu.classList.toggle('show');
+        return;
+      }
+      if (!menu.contains(e.target)) {
+        menu.classList.remove('show');
+      }
+    });
+  }
+})();
+</script>
 {{end}}

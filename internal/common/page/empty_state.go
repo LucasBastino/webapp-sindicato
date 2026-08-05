@@ -19,3 +19,11 @@ func NewEmptyState(icon, entityLabel, addHref, addLabel string) EmptyState {
 		ActionLabel: addLabel,
 	}
 }
+
+func NewNoResultsEmptyState(icon, entityLabel string) EmptyState {
+	return EmptyState{
+		Icon:        icon,
+		Title:       "No se encontraron resultados",
+		Description: fmt.Sprintf("No hay %s que coincidan con la búsqueda.", entityLabel),
+	}
+}

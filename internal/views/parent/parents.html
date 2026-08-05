@@ -25,345 +25,101 @@
   </main>
 
 </div>
+
+<script>
+  lucide.createIcons();
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
 </body>
 </html>
 
 {{define "parents-content"}}
 
-    <div class="page-header-row">
-      <h1>Familiares del afiliado</h1>
-      <a href="../company/company.html" class="btn-back">
-        <i data-lucide="arrow-left"></i>
-        Volver a la ficha
-      </a>
-    </div>
-
-    <div class="card parents-card">
-      <div class="top-actions">
-        <div class="search-wrapper">
-          <i data-lucide="search"></i>
-          <input type="text" id="search-input" placeholder="Buscar familiares...">
-        </div>
-        <button class="btn btn-primary btn-add" id="btn-add">
-          <i data-lucide="plus"></i>
-          Agregar familiar
-        </button>
-      </div>
-
-      {{if eq (len .Parents) 0}}
-        {{template "empty-state" .EmptyState}}
-      {{else}}
-      <table class="parents-table">
-        <thead>
-          <tr>
-            <th>Familiar</th>
-            <th>Parentesco</th>
-            <th>CUIL</th>
-            <th>Fecha de nacimiento</th>
-            <th>Ficha</th>
-            <th>Eliminar</th>
-          </tr>
-        </thead>
-        <tbody id="parents-table-body">
-        </tbody>
-      </table>
-
-      <div class="mobile-cards" id="mobile-cards">
-      </div>
-      {{end}}
-    </div>
-
-    <div class="pagination" id="pagination"></div>
-
-<!-- DELETE MODAL -->
-
-<div class="modal-overlay" id="modal-delete">
-  <div class="modal">
-    <h3>Eliminar familiar</h3>
-    <p>¿Estás seguro de eliminar este familiar?</p>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
-      <button class="btn btn-danger" id="modal-confirm">Eliminar</button>
-    </div>
+<div class="page-header affiliate-header">
+  <h1 class="title-sm">Familiares de {{if .MemberName}}{{.MemberName}}{{else}}el afiliado{{end}}</h1>
+  <div class="header-actions">
+    <button class="btn btn-secondary" type="button"
+            hx-get="/members/{{.MemberID}}"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="arrow-left"></i>
+      Ficha del afiliado
+    </button>
+    {{if ne (len .Parents) 0}}
+    {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+    <button class="btn btn-primary" type="button"
+            hx-get="/members/{{.MemberID}}/parents/new"
+            hx-target="#main-content"
+            hx-push-url="true">
+      <i data-lucide="plus"></i>
+      Agregar familiar
+    </button>
+    {{end}}
+    {{end}}
   </div>
+</div>
+
+<div id="parent-modal-container"></div>
+
+<div class="card table-card">
+  {{if eq (len .Parents) 0}}
+    {{template "empty-state" .EmptyState}}
+  {{else}}
+  <div class="table-wrapper">
+    <table class="affiliate-table">
+      <thead>
+        <tr>
+          <th>Familiar</th>
+          <th class="col-center">Parentesco</th>
+          <th class="col-cuil-parent">CUIL</th>
+          <th class="col-center">Fecha de nacimiento</th>
+          <th>Ficha</th>
+          {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+          <th>Eliminar</th>
+          {{end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Parents}}
+        <tr>
+          <td class="col-name">{{.LastName}}, {{.Name}}</td>
+          <td class="col-center">{{.Relationship}}</td>
+          <td class="col-cuil-parent">{{.Cuil}}</td>
+          <td class="col-center">{{.Birthday}}</td>
+          <td class="col-action">
+            <button class="table-btn blue" type="button"
+                    hx-get="/parents/{{.ID}}"
+                    hx-target="#parent-modal-container"
+                    hx-swap="innerHTML"
+                    title="Ver ficha">
+              <i data-lucide="file-text"></i>
+            </button>
+          </td>
+          {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+          <td class="col-action">
+            <button class="table-btn red" type="button"
+                    hx-delete="/parents/{{.ID}}/permanent"
+                    hx-confirm="¿Estás seguro de eliminar este familiar? Esta acción no se puede deshacer."
+                    hx-target="#main-content"
+                    hx-push-url="true"
+                    title="Eliminar familiar">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
 </div>
 
 <script>
   lucide.createIcons();
-
-  var parents = [
-    { id: 1, nombre: 'María Pérez', parentesco: 'Esposa', cuil: '27-23456789-0', fecha: '12/04/1986' },
-    { id: 2, nombre: 'Lucía Pérez', parentesco: 'Hija', cuil: '20-45678901-2', fecha: '23/02/2014' },
-    { id: 3, nombre: 'Mateo Pérez', parentesco: 'Hijo', cuil: '20-56789012-3', fecha: '15/08/2016' }
-  ];
-
-  var currentPage = 1;
-  var itemsPerPage = 5;
-  var deleteTargetId = null;
-  var filteredParents = parents.slice();
-
-  function renderTable() {
-    var tbody = document.getElementById('parents-table-body');
-    if (!tbody) return;
-    var start = (currentPage - 1) * itemsPerPage;
-    var end = start + itemsPerPage;
-    var pageData = filteredParents.slice(start, end);
-
-    tbody.innerHTML = '';
-
-    if (pageData.length === 0) {
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="6" style="text-align:center;padding:40px;color:#64748b;">No se encontraron familiares</td>';
-      tbody.appendChild(tr);
-      return;
-    }
-
-    pageData.forEach(function(parent) {
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td class="col-name">' + parent.nombre + '</td>' +
-        '<td>' + parent.parentesco + '</td>' +
-        '<td class="col-cuil">' + parent.cuil + '</td>' +
-        '<td>' + parent.fecha + '</td>' +
-        '<td class="col-action">' +
-          '<button class="table-btn blue" onclick="viewProfile(' + parent.id + ')" title="Ver ficha">' +
-            '<i data-lucide="file-text"></i>' +
-          '</button>' +
-        '</td>' +
-        '<td class="col-action">' +
-          '<button class="table-btn red" onclick="showDeleteModal(' + parent.id + ')" title="Eliminar familiar">' +
-            '<i data-lucide="trash-2"></i>' +
-          '</button>' +
-        '</td>';
-      tbody.appendChild(tr);
-    });
-
-    lucide.createIcons();
-  }
-
-  function renderMobileCards() {
-    var container = document.getElementById('mobile-cards');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (filteredParents.length === 0) {
-      container.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px;">No se encontraron familiares</p>';
-      return;
-    }
-
-    filteredParents.forEach(function(parent) {
-      var card = document.createElement('div');
-      card.className = 'mobile-card';
-      card.innerHTML =
-        '<div class="mobile-card-row">' +
-          '<span class="mobile-card-label">Familiar</span>' +
-          '<span class="mobile-card-value">' + parent.nombre + '</span>' +
-        '</div>' +
-        '<div class="mobile-card-row">' +
-          '<span class="mobile-card-label">Parentesco</span>' +
-          '<span class="mobile-card-value">' + parent.parentesco + '</span>' +
-        '</div>' +
-        '<div class="mobile-card-row">' +
-          '<span class="mobile-card-label">CUIL</span>' +
-          '<span class="mobile-card-value">' + parent.cuil + '</span>' +
-        '</div>' +
-        '<div class="mobile-card-row">' +
-          '<span class="mobile-card-label">Fecha de nacimiento</span>' +
-          '<span class="mobile-card-value">' + parent.fecha + '</span>' +
-        '</div>' +
-        '<div class="mobile-card-actions">' +
-          '<button class="table-btn blue" onclick="viewProfile(' + parent.id + ')" title="Ver ficha">' +
-            '<i data-lucide="file-text"></i>' +
-            ' Ficha' +
-          '</button>' +
-          '<button class="table-btn red" onclick="showDeleteModal(' + parent.id + ')" title="Eliminar familiar">' +
-            '<i data-lucide="trash-2"></i>' +
-            ' Eliminar' +
-          '</button>' +
-        '</div>';
-      container.appendChild(card);
-    });
-
-    lucide.createIcons();
-  }
-
-  function renderPagination() {
-    var pagination = document.getElementById('pagination');
-    var totalPages = Math.ceil(filteredParents.length / itemsPerPage);
-
-    pagination.innerHTML = '';
-
-    if (totalPages <= 1) {
-      return;
-    }
-
-    var firstBtn = document.createElement('button');
-    firstBtn.className = 'page-btn';
-    firstBtn.innerHTML = '<i data-lucide="chevrons-left"></i>';
-    firstBtn.onclick = function() { goToPage(1); };
-    firstBtn.disabled = currentPage === 1;
-    pagination.appendChild(firstBtn);
-
-    var prevBtn = document.createElement('button');
-    prevBtn.className = 'page-btn';
-    prevBtn.innerHTML = '<i data-lucide="chevron-left"></i>';
-    prevBtn.onclick = function() { goToPage(currentPage - 1); };
-    prevBtn.disabled = currentPage === 1;
-    pagination.appendChild(prevBtn);
-
-    if (currentPage > 3) {
-      var firstPage = document.createElement('button');
-      firstPage.className = 'page-btn';
-      firstPage.innerHTML = '1';
-      firstPage.onclick = function() { goToPage(1); };
-      pagination.appendChild(firstPage);
-
-      if (currentPage > 4) {
-        var ellipsis = document.createElement('span');
-        ellipsis.className = 'page-ellipsis';
-        ellipsis.textContent = '...';
-        pagination.appendChild(ellipsis);
-      }
-    }
-
-    var startPage = Math.max(1, currentPage - 2);
-    var endPage = Math.min(totalPages, currentPage + 2);
-
-    for (var i = startPage; i <= endPage; i++) {
-      var btn = document.createElement('button');
-      btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-      btn.innerHTML = i;
-      btn.onclick = function() { goToPage(parseInt(this.innerHTML)); };
-      pagination.appendChild(btn);
-    }
-
-    if (currentPage < totalPages - 2) {
-      if (currentPage < totalPages - 3) {
-        var ellipsis2 = document.createElement('span');
-        ellipsis2.className = 'page-ellipsis';
-        ellipsis2.textContent = '...';
-        pagination.appendChild(ellipsis2);
-      }
-
-      var lastPage = document.createElement('button');
-      lastPage.className = 'page-btn';
-      lastPage.innerHTML = totalPages;
-      lastPage.onclick = function() { goToPage(totalPages); };
-      pagination.appendChild(lastPage);
-    }
-
-    var nextBtn = document.createElement('button');
-    nextBtn.className = 'page-btn';
-    nextBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
-    nextBtn.onclick = function() { goToPage(currentPage + 1); };
-    nextBtn.disabled = currentPage === totalPages;
-    pagination.appendChild(nextBtn);
-
-    var lastBtn = document.createElement('button');
-    lastBtn.className = 'page-btn';
-    lastBtn.innerHTML = '<i data-lucide="chevrons-right"></i>';
-    lastBtn.onclick = function() { goToPage(totalPages); };
-    lastBtn.disabled = currentPage === totalPages;
-    pagination.appendChild(lastBtn);
-
-    lucide.createIcons();
-  }
-
-  function goToPage(page) {
-    var totalPages = Math.ceil(filteredParents.length / itemsPerPage);
-    if (page < 1 || page > totalPages) return;
-    currentPage = page;
-    renderTable();
-    renderMobileCards();
-    renderPagination();
-  }
-
-  function viewProfile(id) {
-    window.location.href = 'parent.html';
-  }
-
-  function showDeleteModal(id) {
-    deleteTargetId = id;
-    document.getElementById('modal-delete').classList.add('show');
-  }
-
-  function hideDeleteModal() {
-    deleteTargetId = null;
-    document.getElementById('modal-delete').classList.remove('show');
-  }
-
-  function confirmDelete() {
-    if (deleteTargetId === null) return;
-
-    var index = filteredParents.findIndex(function(a) { return a.id === deleteTargetId; });
-    if (index > -1) {
-      filteredParents.splice(index, 1);
-    }
-
-    var totalPages = Math.ceil(filteredParents.length / itemsPerPage);
-    if (currentPage > totalPages) {
-      currentPage = Math.max(1, totalPages);
-    }
-
-    hideDeleteModal();
-    renderTable();
-    renderMobileCards();
-    renderPagination();
-  }
-
-  document.getElementById('search-input').addEventListener('keyup', function() {
-    var query = this.value.toLowerCase().trim();
-
-    if (query === '') {
-      filteredParents = parents.slice();
-    } else {
-      filteredParents = parents.filter(function(parent) {
-        return parent.nombre.toLowerCase().indexOf(query) > -1 ||
-               parent.cuil.toLowerCase().indexOf(query) > -1 ||
-               parent.parentesco.toLowerCase().indexOf(query) > -1;
-      });
-    }
-
-    currentPage = 1;
-    renderTable();
-    renderMobileCards();
-    renderPagination();
-  });
-
-  document.getElementById('btn-add').addEventListener('click', function() {
-    alert('Formulario en desarrollo');
-  });
-
-  document.getElementById('modal-cancel').addEventListener('click', hideDeleteModal);
-  document.getElementById('modal-confirm').addEventListener('click', confirmDelete);
-
-  document.getElementById('modal-delete').addEventListener('click', function(e) {
-    if (e.target === this) {
-      hideDeleteModal();
-    }
-  });
-
-  var dropdown = document.getElementById('profile-dropdown');
-  var menu = document.getElementById('dropdown-menu');
-
-  if (dropdown && menu) {
-    dropdown.querySelector('.profile-trigger').addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.classList.toggle('show');
-    });
-
-    document.addEventListener('click', function() {
-      menu.classList.remove('show');
-    });
-  }
-
-  renderTable();
-  renderMobileCards();
-  renderPagination();
-
-  document.body.addEventListener('htmx:afterSwap', function() {
-    lucide.createIcons();
-  });
 </script>
 
 {{end}}

@@ -5,14 +5,13 @@ import (
 	"time"
 
 	"github.com/LucasBastino/app-sindicato/internal/backup"
-	"github.com/LucasBastino/app-sindicato/internal/features/installment"
 	"github.com/LucasBastino/app-sindicato/internal/features/payment"
 	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
 	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
 	"github.com/robfig/cron/v3"
 )
 
-func startCron(paymentService *payment.PaymentService, installmentService *installment.InstallmentService, backupService *backup.BackUpService, idempotencyService *idempotency.IdempotencyService, logger logger.Logger){
+func startCron(paymentService *payment.PaymentService, backupService *backup.BackUpService, idempotencyService *idempotency.IdempotencyService, logger logger.Logger){
 	c := cron.New()
 
 	// CREATE PAYMENTS
@@ -35,36 +34,6 @@ func startCron(paymentService *payment.PaymentService, installmentService *insta
         }
     })
 
-	// PAYMENTS STATUS
-	// se ejecuta todos los dias a las 00:00
-	c.AddFunc("0 0 * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-        defer cancel()
-
-		if err := paymentService.CheckStatusMonthly(ctx); err != nil {
-			logger.Error("cron error, failed to check payment status monthly: ", err)
-        }
-	})
-
-	// INSTALLMENTS STATUS
-	// se ejecuta todos los dias 15 a las 00:00
-	c.AddFunc("0 0 15 * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-        defer cancel()
-
-		if err := installmentService.CheckStatusDaily(ctx); err != nil {
-			logger.Error("cron error, failed to check installment status daily: ", err)
-        }
-	})
-	// se ejecuta todos los dias 16 a las 00:00 por si falló el primero
-	c.AddFunc("0 0 16 * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-        defer cancel()
-
-		if err := installmentService.CheckStatusDaily(ctx); err != nil {
-			logger.Error("cron error, failed to check installment status daily: ", err)
-        }
-	})
 
 	// LOGGER
 	// se ejecuta todos los dias a las 00:10

@@ -23,7 +23,8 @@ func (r *MemberRepository) FindByID(ctx context.Context, id int) (*Member, error
 	query := `
 	SELECT 
 		M.*,
-		C.name AS company_name
+		C.name AS company_name,
+		C.deleted_at AS company_deleted_at
 	FROM members M
 	INNER JOIN companies C
 		ON M.id_company = C.id_company
@@ -108,8 +109,33 @@ func (r *MemberRepository) Count(ctx context.Context, filters memberFilters) (in
 	return totalRows, nil
 }
 
+func (r *MemberRepository) FindRecent(ctx context.Context, limit int) ([]Member, error) {
+	query := `
+	SELECT
+		M.id_member,
+		M.name,
+		M.last_name,
+		M.created_at,
+		C.name AS company_name
+	FROM members M
+	INNER JOIN companies C
+		ON M.id_company = C.id_company
+	WHERE
+		M.deleted_at IS NULL
+		AND C.deleted_at IS NULL
+	ORDER BY M.created_at DESC
+	LIMIT ?
+	`
+	var members []Member
+	err := r.db.SelectContext(ctx, &members, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recent members: %w", err)
+	}
+	return members, nil
+}
 
-func (r *MemberRepository) Insert(ctx context.Context, member Member) (int, error) {
+
+func (r *MemberRepository) Insert(ctx context.Context, tx *sqlx.Tx, member Member) (int, error) {
 	query := 
 	`INSERT INTO members (
 		name,
@@ -148,7 +174,7 @@ func (r *MemberRepository) Insert(ctx context.Context, member Member) (int, erro
 		:entry_date,
 		:observations
 	)`
-	res, err := r.db.NamedExecContext(ctx, query, member)
+	res, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert member: %w", err)
 	}
@@ -164,7 +190,7 @@ func (r *MemberRepository) Update(ctx context.Context, id int, member Member) er
 	member.ID = id
 
 	query := `
-	UPDATE member
+	UPDATE members
 	SET
 		name = :name,
 		last_name = :last_name,
@@ -232,8 +258,8 @@ func (r *MemberRepository) HardDelete(ctx context.Context, id int) error {
 }
 
 
-func (r *MemberRepository) BeginTx() (*sqlx.Tx, error){
-	return r.db.Beginx()
+func (r *MemberRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error){
+	return r.db.BeginTxx(ctx, nil)
 }
 
 // func (r *MemberRepository) FindByCompany(ctx context.Context, companyID, limit, offset int, searchKey string, includeInactive, includeDeleted bool) ([]Member, error) {
