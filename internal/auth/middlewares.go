@@ -132,11 +132,12 @@ func (m *AuthMiddleware) VerifyAdmin(c *fiber.Ctx) error{
 
 
 func (m *AuthMiddleware) VerifyAtomicLicense (c *fiber.Ctx) error {
-	// whitelist para verifyLicense
-	if c.Path() == "/verifyLicense" {
-   		return c.Next()
+	if c.Path() == "/verifyLicense" ||
+		c.Path() == "/favicon.ico" ||
+		strings.HasPrefix(c.Path(), "/static/") {
+		return c.Next()
 	}
-	
+
 	valid := m.licenseService.IsValid()
 	if !valid {
 		clearCookies(c, m.authService.cfg.CookieSecure)

@@ -104,6 +104,6 @@ func NewInvalidLicenseError(err error, clientMsg string) *AppError {
 		"forbidden",
 		clientMsg,
 		http.StatusForbidden,
-		RenderTypeToast,
+		RenderTypeInvalidLicense,
 	)
 }

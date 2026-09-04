@@ -73,5 +73,9 @@ func renderLogin(c *fiber.Ctx, appErr *apperrors.AppError) error {
 }
 
 func renderInvalidLicense(c *fiber.Ctx, appErr *apperrors.AppError) error {
-	return c.Status(appErr.StatusCode).Render("invalid_license", fiber.Map{"errorMsg": appErr.ClientMsg})
+	if c.Get("HX-Request") == "true" {
+		c.Set("HX-Redirect", "/")
+		return c.SendStatus(appErr.StatusCode)
+	}
+	return c.Status(appErr.StatusCode).Render("license/expired", fiber.Map{"errorMsg": appErr.ClientMsg})
 }
