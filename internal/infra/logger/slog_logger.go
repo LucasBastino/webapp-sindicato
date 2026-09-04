@@ -20,7 +20,11 @@ type SlogLogger struct{
 const logDir = "./logs"
 
 func NewSlogLogger() (*SlogLogger, error) {
-	fileName := fmt.Sprintf("%s/app-%s.log", logDir, time.Now().Format("2006-01-02"))
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	fileName := filepath.Join(logDir, fmt.Sprintf("app-%s.log", time.Now().Format("2006-01-02")))
 
 	logFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err!=nil{
