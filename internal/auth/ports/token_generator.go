@@ -1,7 +1,7 @@
 package authports
 
 import (
-	authdomain "github.com/LucasBastino/app-sindicato/internal/auth/domain"
+	authdomain "github.com/LucasBastino/webapp-sindicato/internal/auth/domain"
 )
 
 type TokenGenerator interface {

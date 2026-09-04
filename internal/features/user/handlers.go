@@ -4,19 +4,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
 	"github.com/gofiber/fiber/v2"
 )
 
 type UserHandler struct {
-	service *UserService
+	service      *UserService
+	cookieSecure bool
 }
 
-func NewUserHandler(service *UserService) *UserHandler {
+func NewUserHandler(service *UserService, cookieSecure bool) *UserHandler {
 	return &UserHandler{
-		service: service,
+		service:      service,
+		cookieSecure: cookieSecure,
 	}
 }
 
@@ -24,11 +26,11 @@ func (h *UserHandler) canChangePassword(authAdmin bool, authUserID, targetID int
 	return authAdmin || authUserID == targetID
 }
 
-func requireCurrentPassword(actorAdmin bool, actorID, targetID int, targetAdmin bool) bool {
-	if !actorAdmin {
-		return true // no-admin solo toca la propia
+func requireCurrentPassword(actorAdmin bool, actorID, targetID int) bool {
+	if actorAdmin {
+		return false // admin cambia cualquier contraseña (propia u otra) sin actual
 	}
-	return actorID == targetID || targetAdmin
+	return actorID == targetID // no-admin solo la propia, con actual
 }
 
 func (h *UserHandler) RenderPanel(c *fiber.Ctx) error {
@@ -87,13 +89,12 @@ func (h *UserHandler) RenderChangePasswordModal(c *fiber.Ctx) error {
 			"No tenés permisos para cambiar esta contraseña.",
 		)
 	}
-	target, err := h.service.Get(ctx, userID)
-	if err != nil {
+	if _, err := h.service.Get(ctx, userID); err != nil {
 		return err
 	}
 	return c.Render("change-password-modal", PasswordModalData{
 		ID:                     userID,
-		RequireCurrentPassword: requireCurrentPassword(authInfo.Admin, authInfo.UserID, userID, target.Admin),
+		RequireCurrentPassword: requireCurrentPassword(authInfo.Admin, authInfo.UserID, userID),
 	})
 }
 
@@ -140,11 +141,10 @@ func (h *UserHandler) ChangePassword(c *fiber.Ctx) error {
 		)
 	}
 
-	target, err := h.service.Get(ctx, id)
-	if err != nil {
+	if _, err := h.service.Get(ctx, id); err != nil {
 		return err
 	}
-	requireCurrent := requireCurrentPassword(authInfo.Admin, authInfo.UserID, id, target.Admin)
+	requireCurrent := requireCurrentPassword(authInfo.Admin, authInfo.UserID, id)
 
 	var req passwordRequest
 	err = c.BodyParser(&req)
@@ -163,14 +163,11 @@ func (h *UserHandler) ChangePassword(c *fiber.Ctx) error {
 		return c.Status(status).Render("change-password-modal", PasswordModalData{
 			ID:                     id,
 			RequireCurrentPassword: requireCurrent,
-			CurrentPassword:        req.CurrentPassword,
-			Password:               req.Password,
-			ConfirmPassword:        req.ConfirmPassword,
 			Errors:                 errorMap,
 		})
 	}
 
-	err = h.service.ChangePassword(ctx, id, req, requireCurrent)
+	err = h.service.ChangePassword(ctx, id, authInfo.UserID, httpUtils.SessionRefreshToken(c), req, requireCurrent)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidCurrentPassword) {
 			errorMap = map[string]string{"current_password": "La contraseña actual no es correcta."}
@@ -188,9 +185,6 @@ func (h *UserHandler) ChangePassword(c *fiber.Ctx) error {
 		return c.Status(status).Render("change-password-modal", PasswordModalData{
 			ID:                     id,
 			RequireCurrentPassword: requireCurrent,
-			CurrentPassword:        req.CurrentPassword,
-			Password:               req.Password,
-			ConfirmPassword:        req.ConfirmPassword,
 			Errors:                 errorMap,
 		})
 	}
@@ -237,6 +231,17 @@ func (h *UserHandler) UpdatePermissions(c *fiber.Ctx) error {
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidPermissions) {
 			errorMap = map[string]string{"resourceRoles": "Un admin debe tener permisos de editor en todos los recursos."}
+			c.Set("HX-Retarget", "#users-modal-container")
+			c.Set("HX-Reswap", "innerHTML")
+			return c.Status(fiber.StatusBadRequest).Render("update-permissions-modal", PermissionsModalData{
+				ID:            id,
+				Admin:         admin,
+				ResourceRoles: permissions,
+				Errors:        errorMap,
+			})
+		}
+		if errors.Is(err, apperrors.ErrCannotRemoveLastAdmin) {
+			errorMap = map[string]string{"admin": "No se puede eliminar ni degradar al último administrador."}
 			c.Set("HX-Retarget", "#users-modal-container")
 			c.Set("HX-Reswap", "innerHTML")
 			return c.Status(fiber.StatusBadRequest).Render("update-permissions-modal", PermissionsModalData{

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/http/errorhandler"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/http/errorhandler"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,10 +20,7 @@ func RecoverMiddleware(logger logger.Logger) fiber.Handler {
 					requestID = ""
 				}
 
-				userID, ok := c.Locals("userID").(string)
-				if !ok {
-					userID = ""
-				}
+				userID := userIDFromLocals(c)
 				logger.Error("request panicked",
 					"request_id", requestID,
 					"user_id", userID,

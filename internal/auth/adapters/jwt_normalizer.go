@@ -3,7 +3,7 @@ package authadapters
 import (
 	"time"
 
-	authdomain "github.com/LucasBastino/app-sindicato/internal/auth/domain"
+	authdomain "github.com/LucasBastino/webapp-sindicato/internal/auth/domain"
 	"github.com/golang-jwt/jwt/v5"
 )
 

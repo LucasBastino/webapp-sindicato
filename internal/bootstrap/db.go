@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
@@ -228,6 +228,10 @@ func ensureMembers(db *sqlx.DB) error {
 	// id_company va sin NOT NULL, por si borras la empresa
 	if err!=nil{
 		return fmt.Errorf("failed to create members table: %w", err)
+	}
+	_, err = db.Exec(`UPDATE members SET member_number = NULL WHERE member_number = ''`)
+	if err != nil {
+		return fmt.Errorf("failed to normalize empty member_number to NULL: %w", err)
 	}
 	return nil
 }
@@ -578,7 +582,7 @@ func hasUsers(db *sqlx.DB) (bool, error) {
 }
 
 func ensureDefaultAdmin(db *sqlx.DB) error {
-	byteHash, err := bcrypt.GenerateFromPassword([]byte("admin123"), 14)
+	byteHash, err := bcrypt.GenerateFromPassword([]byte("demo1234"), 14)
 	if err != nil {
 		return apperrors.NewInternalError(fmt.Errorf("failed to generate hash table: %w", err), "")	
 	}

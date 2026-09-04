@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"testing"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/functiontemplates"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/functiontemplates"
 	"github.com/gofiber/template/html/v2"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/gofiber/fiber/v2"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 type request struct {
@@ -36,7 +36,7 @@ func (req request) validate() map[string]string {
 		errorMap["companyID"] = err
 	}
 	if len(req.PaymentIDs) == 0 {
-		errorMap["payment-ids"] = "Debés seleccionar al menos un pago vencido."
+		errorMap["payment-ids"] = "Debés seleccionar al menos un aporte vencido."
 	}
 	if req.Amount == "" {
 		errorMap["amount"] = "Campo requerido."

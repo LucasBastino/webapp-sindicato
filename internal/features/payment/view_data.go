@@ -1,6 +1,6 @@
 package payment
 
-import "github.com/LucasBastino/app-sindicato/internal/common/page"
+import "github.com/LucasBastino/webapp-sindicato/internal/common/page"
 
 type pageData struct {
 	Payment     response
@@ -15,6 +15,7 @@ type gridPageData struct {
 	Stats       gridStats
 	CompanyID   int
 	CompanyName string
+	CompanyNav  page.CompanyNav
 	Year        int
 	Years       []int
 	PageContext page.PageContext

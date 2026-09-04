@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Afiliados del sistema</title>
+  <title>Afiliados del sindicato</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -66,60 +68,21 @@
 </script>
 
     {{if .CompanyID}}
-    <div class="page-header affiliate-header">
-      <h1 class="title-sm">Afiliados de {{if .CompanyName}}{{.CompanyName}}{{else}}la empresa{{end}}</h1>
-      <div class="header-actions">
-        <button class="btn btn-secondary" type="button"
-                hx-get="/companies/{{.CompanyID}}"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Ficha de la empresa
-        </button>
-        {{if ne (len .Members) 0}}
-        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
-        <button class="btn btn-primary" type="button"
-                hx-get="/companies/{{.CompanyID}}/members/new"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="plus"></i>
-          Agregar afiliado
-        </button>
-        {{end}}
-        {{end}}
-      </div>
-    </div>
+    <div class="company-context-layout">
+      <aside class="affiliate-sidebar company-context-sidebar">
+        {{template "company-context-sidebar" .CompanyNav}}
+      </aside>
+
+      {{template "company-mobile-actions" .CompanyNav}}
+
+      <div class="table-toolbar company-context-toolbar">
     {{else}}
     <div class="table-header">
-      <h1>Afiliados del sistema</h1>
-      <div class="table-actions">
-        <div class="search-wrapper">
-          <i data-lucide="search"></i>
-          <input type="text" id="search-input" name="search-key" form="members-filters"
-                 placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
-        </div>
-        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
-        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
-                hx-get="/members/new"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="plus"></i>
-          Agregar afiliado
-        </button>
-        {{end}}
-      </div>
+      <h1>Afiliados del sindicato</h1>
     </div>
+
+    <div class="table-toolbar">
     {{end}}
-
-    <div class="{{if .CompanyID}}table-toolbar{{end}}">
-      {{if .CompanyID}}
-      <div class="search-wrapper">
-        <i data-lucide="search"></i>
-        <input type="text" id="search-input" name="search-key" form="members-filters"
-               placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
-      </div>
-      {{end}}
-
       <form id="members-filters" class="status-filters"
             {{if .CompanyID}}
             hx-get="/companies/{{.CompanyID}}/members"
@@ -158,39 +121,160 @@
           Eliminados
         </label>
       </form>
+
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" name="search-key" form="members-filters"
+                 placeholder="Buscar afiliados..." value="{{.PageContext.SearchKey}}">
+        </div>
+        {{if .CompanyID}}
+        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+        <button class="btn btn-primary btn-add-table" type="button"
+                hx-get="/companies/{{.CompanyID}}/members/new"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="plus"></i>
+          <span class="btn-add-label-desktop">Agregar afiliado</span>
+          <span class="btn-add-label-mobile">Agregar nuevo afiliado</span>
+        </button>
+        {{end}}
+        {{else}}
+        {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
+                hx-get="/members/new"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="plus"></i>
+          <span class="btn-add-label-desktop">Agregar afiliado</span>
+          <span class="btn-add-label-mobile">Agregar nuevo afiliado</span>
+        </button>
+        {{end}}
+        {{end}}
+      </div>
     </div>
 
-    <div id="members-table-results" class="card table-card">
-      {{if eq (len .Members) 0}}
-        {{template "empty-state" .EmptyState}}
-      {{else}}
-      <div class="table-wrapper">
-        <table class="affiliate-table{{if .CompanyID}} company-members-table{{end}}">
-          <thead>
-            <tr>
-              <th class="col-name">Afiliado</th>
-              <th class="col-dni">DNI</th>
-              <th class="col-member-number">N° Afiliado</th>
-              {{if not .CompanyID}}
-              <th class="col-company">Empresa</th>
+    {{if .CompanyID}}
+    <div class="company-context-body">
+    {{end}}
+
+    <div id="members-table-results">
+      <div class="card table-card">
+        {{if eq (len .Members) 0}}
+          {{template "empty-state" .EmptyState}}
+        {{else}}
+        <div class="table-wrapper">
+          <table class="affiliate-table{{if .CompanyID}} company-members-table{{end}}">
+            <thead>
+              <tr>
+                <th class="col-name">Afiliado</th>
+                <th class="col-dni">DNI</th>
+                <th class="col-member-number">N° Afiliado</th>
+                {{if not .CompanyID}}
+                <th class="col-company">Empresa</th>
+                {{end}}
+                <th class="col-estado">Estado</th>
+                <th class="col-action">Ficha</th>
+                {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+                <th class="col-action">Acción</th>
+                {{end}}
+              </tr>
+            </thead>
+            <tbody id="affiliate-table-body">
+              {{range .Members}}
+              <tr {{if .IsDeleted}}class="row-deleted"{{else if .IsInactive}}class="row-inactive"{{end}}>
+                <td class="col-name">{{.LastName}}, {{.Name}}</td>
+                <td class="col-dni">{{.Dni}}</td>
+                <td class="col-member-number">{{.MemberNumber}}</td>
+                {{if not $.CompanyID}}
+                <td class="col-company">{{.CompanyName}}</td>
+                {{end}}
+                <td class="col-estado">
+                  {{if .IsDeleted}}
+                    <span class="row-badge deleted">Eliminado</span>
+                  {{else if .IsInactive}}
+                    <span class="row-badge inactive">Inactivo</span>
+                  {{else}}
+                    <span class="row-badge active">Activo</span>
+                  {{end}}
+                </td>
+                <td class="col-action">
+                  <button class="table-btn blue" type="button"
+                          hx-get="/members/{{.ID}}"
+                          hx-target="#main-content"
+                          hx-push-url="true"
+                          title="Ver ficha">
+                    <i data-lucide="file-text"></i>
+                  </button>
+                </td>
+                {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+                <td class="col-action">
+                  {{if .IsDeleted}}
+                  <button class="table-btn green" type="button"
+                          {{if $.CompanyID}}
+                          hx-post="/members/{{.ID}}/restore?company_id={{$.CompanyID}}"
+                          hx-headers='{"view": "table"}'
+                          {{else}}
+                          hx-post="/members/{{.ID}}/restore"
+                          hx-headers='{"view": "table"}'
+                          {{end}}
+                          hx-include="#members-filters, #search-input"
+                          hx-confirm="¿Estás seguro de restaurar este afiliado?"
+                          hx-target="#members-table-results"
+                          hx-select="#members-table-results"
+                          hx-swap="outerHTML"
+                          title="Restaurar afiliado">
+                    <i data-lucide="rotate-ccw"></i>
+                  </button>
+                  {{else}}
+                  <button class="table-btn red" type="button"
+                          {{if $.CompanyID}}
+                          hx-delete="/members/{{.ID}}?company_id={{$.CompanyID}}"
+                          {{else}}
+                          hx-delete="/members/{{.ID}}"
+                          {{end}}
+                          hx-include="#members-filters, #search-input"
+                          hx-confirm="¿Estás seguro de eliminar este afiliado?"
+                          hx-target="#members-table-results"
+                          hx-select="#members-table-results"
+                          hx-swap="outerHTML"
+                          title="Eliminar afiliado">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                  {{end}}
+                </td>
+                {{end}}
+              </tr>
               {{end}}
-              <th class="col-estado">Estado</th>
-              <th class="col-action">Ficha</th>
-              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
-              <th class="col-action">Acción</th>
-              {{end}}
-            </tr>
-          </thead>
-          <tbody id="affiliate-table-body">
-            {{range .Members}}
-            <tr {{if .IsDeleted}}class="row-deleted"{{else if .IsInactive}}class="row-inactive"{{end}}>
-              <td class="col-name">{{.LastName}}, {{.Name}}</td>
-              <td class="col-dni">{{.Dni}}</td>
-              <td class="col-member-number">{{.MemberNumber}}</td>
-              {{if not $.CompanyID}}
-              <td class="col-company">{{.CompanyName}}</td>
-              {{end}}
-              <td class="col-estado">
+            </tbody>
+          </table>
+        </div>
+        <div class="mobile-cards">
+          {{range .Members}}
+          <article class="mobile-card mobile-card--clickable" {{if .IsDeleted}}data-status="deleted"{{else if .IsInactive}}data-status="inactive"{{end}}
+                   hx-get="/members/{{.ID}}"
+                   hx-target="#main-content"
+                   hx-push-url="true">
+            <div class="mobile-card-title">{{.LastName}}, {{.Name}}</div>
+            <div class="mobile-card-body">
+              <div class="mobile-card-fields">
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">DNI</span>
+              <span class="mobile-card-value">{{.Dni}}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">N° Afiliado</span>
+              <span class="mobile-card-value">{{.MemberNumber}}</span>
+            </div>
+            {{if not $.CompanyID}}
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Empresa</span>
+              <span class="mobile-card-value">{{.CompanyName}}</span>
+            </div>
+            {{end}}
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Estado</span>
+              <span class="mobile-card-value">
                 {{if .IsDeleted}}
                   <span class="row-badge deleted">Eliminado</span>
                 {{else if .IsInactive}}
@@ -198,61 +282,98 @@
                 {{else}}
                   <span class="row-badge active">Activo</span>
                 {{end}}
-              </td>
-              <td class="col-action">
-                <button class="table-btn blue" type="button"
-                        hx-get="/members/{{.ID}}"
-                        hx-target="#main-content"
-                        hx-push-url="true"
-                        title="Ver ficha">
-                  <i data-lucide="file-text"></i>
-                </button>
-              </td>
+              </span>
+            </div>
+              </div>
+            <div class="mobile-card-actions" onclick="event.stopPropagation()">
+              <button class="table-btn blue" type="button"
+                      hx-get="/members/{{.ID}}"
+                      hx-target="#main-content"
+                      hx-push-url="true"
+                      title="Ver ficha">
+                <i data-lucide="file-text"></i>
+              </button>
               {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
-              <td class="col-action">
-                {{if .IsDeleted}}
-                <button class="table-btn green" type="button"
-                        {{if $.CompanyID}}
-                        hx-post="/members/{{.ID}}/restore?company_id={{$.CompanyID}}"
-                        hx-headers='{"view": "table"}'
-                        {{else}}
-                        hx-post="/members/{{.ID}}/restore"
-                        hx-headers='{"view": "table"}'
-                        {{end}}
-                        hx-include="#members-filters, #search-input"
-                        hx-confirm="¿Estás seguro de restaurar este afiliado?"
-                        hx-target="#members-table-results"
-                        hx-select="#members-table-results"
-                        hx-swap="outerHTML"
-                        title="Restaurar afiliado">
-                  <i data-lucide="rotate-ccw"></i>
-                </button>
-                {{else}}
-                <button class="table-btn red" type="button"
-                        {{if $.CompanyID}}
-                        hx-delete="/members/{{.ID}}?company_id={{$.CompanyID}}"
-                        {{else}}
-                        hx-delete="/members/{{.ID}}"
-                        {{end}}
-                        hx-include="#members-filters, #search-input"
-                        hx-confirm="¿Estás seguro de eliminar este afiliado?"
-                        hx-target="#members-table-results"
-                        hx-select="#members-table-results"
-                        hx-swap="outerHTML"
-                        title="Eliminar afiliado">
-                  <i data-lucide="trash-2"></i>
-                </button>
-                {{end}}
-              </td>
+              {{if .IsDeleted}}
+              <button class="table-btn green" type="button"
+                      {{if $.CompanyID}}
+                      hx-post="/members/{{.ID}}/restore?company_id={{$.CompanyID}}"
+                      hx-headers='{"view": "table"}'
+                      {{else}}
+                      hx-post="/members/{{.ID}}/restore"
+                      hx-headers='{"view": "table"}'
+                      {{end}}
+                      hx-include="#members-filters, #search-input"
+                      hx-confirm="¿Estás seguro de restaurar este afiliado?"
+                      hx-target="#members-table-results"
+                      hx-select="#members-table-results"
+                      hx-swap="outerHTML"
+                      title="Restaurar afiliado">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+              {{else}}
+              <button class="table-btn red" type="button"
+                      {{if $.CompanyID}}
+                      hx-delete="/members/{{.ID}}?company_id={{$.CompanyID}}"
+                      {{else}}
+                      hx-delete="/members/{{.ID}}"
+                      {{end}}
+                      hx-include="#members-filters, #search-input"
+                      hx-confirm="¿Estás seguro de eliminar este afiliado?"
+                      hx-target="#members-table-results"
+                      hx-select="#members-table-results"
+                      hx-swap="outerHTML"
+                      title="Eliminar afiliado">
+                <i data-lucide="trash-2"></i>
+              </button>
               {{end}}
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
+              {{end}}
+            </div>
+            </div>
+          </article>
+          {{end}}
+        </div>
+        {{end}}
       </div>
-      {{end}}
+      {{template "pagination" .PageContext}}
     </div>
 
-    {{template "pagination" .PageContext}}
+    {{if .CompanyID}}
+    </div>
+    </div>
+    {{end}}
+
+<script>
+  (function() {
+    function closeCompanyActionsMenu() {
+      var menu = document.getElementById('company-actions-menu');
+      var toggle = document.getElementById('company-actions-toggle');
+      if (menu) menu.classList.remove('show');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (!document.body.dataset.companyActionsBound) {
+      document.body.dataset.companyActionsBound = '1';
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#company-actions-dropdown')) {
+          closeCompanyActionsMenu();
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function() {
+        document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+          if (el.dataset.actionsBound) return;
+          el.dataset.actionsBound = '1';
+          el.addEventListener('click', closeCompanyActionsMenu);
+        });
+      });
+    }
+
+    document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+      if (el.dataset.actionsBound) return;
+      el.dataset.actionsBound = '1';
+      el.addEventListener('click', closeCompanyActionsMenu);
+    });
+  })();
+</script>
 
 {{end}}

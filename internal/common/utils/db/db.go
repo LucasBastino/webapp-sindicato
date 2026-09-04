@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 )
 
 func Exists(db *sql.DB, id int, field, table string) (bool, error) {

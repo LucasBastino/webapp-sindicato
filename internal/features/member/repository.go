@@ -136,7 +136,7 @@ func (r *MemberRepository) FindRecent(ctx context.Context, limit int) ([]Member,
 
 
 func (r *MemberRepository) Insert(ctx context.Context, tx *sqlx.Tx, member Member) (int, error) {
-	query := 
+	query :=
 	`INSERT INTO members (
 		name,
 		last_name,
@@ -155,7 +155,8 @@ func (r *MemberRepository) Insert(ctx context.Context, tx *sqlx.Tx, member Membe
 		category,
 		entry_date,
 		observations
-	) VALUES (
+	)
+	SELECT
 		:name,
 		:last_name,
 		:dni,
@@ -169,14 +170,24 @@ func (r *MemberRepository) Insert(ctx context.Context, tx *sqlx.Tx, member Membe
 		:district,
 		:member_number,
 		:cuil,
-		:id_company,
+		C.id_company,
 		:category,
 		:entry_date,
 		:observations
-	)`
+	FROM companies C
+	WHERE C.id_company = :id_company
+		AND C.deleted_at IS NULL
+	`
 	res, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert member: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected while inserting member: %w", err)
+	}
+	if rows == 0 {
+		return 0, nil
 	}
 	id, err := res.LastInsertId()
 	if err!=nil{
@@ -190,28 +201,31 @@ func (r *MemberRepository) Update(ctx context.Context, id int, member Member) er
 	member.ID = id
 
 	query := `
-	UPDATE members
+	UPDATE members M
+	INNER JOIN companies C
+		ON C.id_company = :id_company
+		AND C.deleted_at IS NULL
 	SET
-		name = :name,
-		last_name = :last_name,
-		dni = :dni,
-		birthday = :birthday,
-		gender = :gender,
-		marital_status = :marital_status,
-		phone = :phone,
-		email = :email,
-		address = :address,
-		postal_code = :postal_code,
-		district = :district,
-		member_number = :member_number,
-		cuil = :cuil,
-		id_company = :id_company,
-		category = :category,
-		entry_date = :entry_date,
-		observations = :observations
+		M.name = :name,
+		M.last_name = :last_name,
+		M.dni = :dni,
+		M.birthday = :birthday,
+		M.gender = :gender,
+		M.marital_status = :marital_status,
+		M.phone = :phone,
+		M.email = :email,
+		M.address = :address,
+		M.postal_code = :postal_code,
+		M.district = :district,
+		M.member_number = :member_number,
+		M.cuil = :cuil,
+		M.id_company = :id_company,
+		M.category = :category,
+		M.entry_date = :entry_date,
+		M.observations = :observations
 	WHERE
-		id_member = :id_member
-		AND deleted_at IS NULL
+		M.id_member = :id_member
+		AND M.deleted_at IS NULL
 	`
 
 	_, err := r.db.NamedExecContext(ctx, query, member)
@@ -222,7 +236,7 @@ func (r *MemberRepository) Update(ctx context.Context, id int, member Member) er
 }
 
 func (r *MemberRepository) SoftDelete(ctx context.Context, id int) (int, error){
-	query := "UPDATE members SET deleted_at = NOW() WHERE id_member = ?"
+	query := "UPDATE members SET deleted_at = NOW() WHERE id_member = ? AND deleted_at IS NULL"
 	res, err := r.db.ExecContext(ctx, query, id)
 	if err!=nil{
 		return 0, fmt.Errorf("failed to soft delete member: %w", err)
@@ -236,7 +250,7 @@ func (r *MemberRepository) SoftDelete(ctx context.Context, id int) (int, error){
 }
 
 func (r *MemberRepository) Restore(ctx context.Context, id int) (int, error){
-	query := "UPDATE members SET deleted_at = NULL WHERE id_member = ?"
+	query := "UPDATE members SET deleted_at = NULL WHERE id_member = ? AND deleted_at IS NOT NULL"
 	res, err :=  r.db.ExecContext(ctx, query, id)
 	if err!=nil{
 		return 0, fmt.Errorf("failed to restore member: %w", err)

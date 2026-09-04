@@ -44,6 +44,14 @@ func ValidateBirthday(input string) string {
 	return isValidDate(input, min, max)
 }
 
+// ValidateOptionalBirthday allows empty; if present, same rules as ValidateBirthday.
+func ValidateOptionalBirthday(input string) string {
+	if input == "" {
+		return ""
+	}
+	return ValidateBirthday(input)
+}
+
 func ValidateGender(input string) string {
 	if input == "" { 
 		return "Campo requerido."
@@ -62,6 +70,14 @@ func ValidateGender(input string) string {
 	return isValidOption(input, optionsSet)
 }
 
+// ValidateOptionalGender allows empty; if present, same rules as ValidateGender.
+func ValidateOptionalGender(input string) string {
+	if input == "" {
+		return ""
+	}
+	return ValidateGender(input)
+}
+
 func ValidateRelationship(input string) string {
 	if input == "" { 
 		return "Campo requerido."
@@ -72,6 +88,14 @@ func ValidateRelationship(input string) string {
 	}
 
 	return isNotLongerThan(input, 20)
+}
+
+// ValidateOptionalRelationship allows empty; if present, same rules as ValidateRelationship.
+func ValidateOptionalRelationship(input string) string {
+	if input == "" {
+		return ""
+	}
+	return ValidateRelationship(input)
 }
 
 func ValidateMaritalStatus(input string) string {
@@ -169,12 +193,10 @@ func ValidatePhone(input string) string {
 	return isNotLongerThan(input, 20)
 }
 
-// todo: cambiar en js
 func ValidateEmail(input string) string {
 	if input == "" {
 		return ""
 	}
-
 
 	parts := strings.Split(input, "@")
 	if len(parts) != 2{
@@ -182,7 +204,7 @@ func ValidateEmail(input string) string {
 	}
 	local, domain := parts[0], parts[1]
 	if (len(local) == 0 ||
-		!strings.Contains(input, ".") ||
+		!strings.Contains(domain, ".") ||
 		len(domain) < 3 ||
 		// tener en cuenta, "." asi es un string y no se puede comparar
 		// '.' asi es un rune / byte literal y sí se puede
@@ -492,17 +514,18 @@ func ValidatePassword(input string) string{
 	if input == "" { 
 		return "Campo requerido."
 	}
-	input = removeChars(input, " #-'&,.!?*+")
-
-	if errMsg := isAlphanumeric(input); errMsg != "" {
-		return errMsg
-	}
-
+	
 	if errMsg := hasAtLeast(input, 8); errMsg != "" {
 		return errMsg
 	}
+	
+	if errMsg := isNotLongerThan(input, 20); errMsg != "" {
+		return errMsg
+	}
 
-	return isNotLongerThan(input, 20)
+	input = removeChars(input, " @#-'&,.!?*+")
+
+	return isAlphanumeric(input)
 }
 
 func ValidateAdmin(input string) string {

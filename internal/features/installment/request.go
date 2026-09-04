@@ -3,7 +3,7 @@ package installment
 import (
 	"strings"
 
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 // recordar que los campos tiene que ser exportados para que el body parser los lea

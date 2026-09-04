@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/company"
-	"github.com/LucasBastino/app-sindicato/internal/features/member"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/features/paymentplan"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/company"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/member"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/paymentplan"
 )
 
 type DashboardService struct {

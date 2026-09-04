@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/LucasBastino/app-sindicato/internal/bootstrap"
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/bootstrap"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/joho/godotenv"
 )
 
@@ -20,6 +20,10 @@ func main() {
 	}
 	
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		fmt.Println("CRITICAL: invalid config:", err)
+		os.Exit(1)
+	}
 
 	logger, err := logger.NewSlogLogger()
 	if err!=nil{

@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	userauthinfo "github.com/LucasBastino/app-sindicato/internal/features/user/authinfo"
-	"github.com/LucasBastino/app-sindicato/internal/license"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	userauthinfo "github.com/LucasBastino/webapp-sindicato/internal/features/user/authinfo"
+	"github.com/LucasBastino/webapp-sindicato/internal/license"
 	"github.com/gofiber/fiber/v2"
 )
+
+const SessionRefreshTokenLocal = "sessionRefreshToken"
 
 type AuthMiddleware struct{
 	authService *AuthService
@@ -58,6 +60,7 @@ func (m *AuthMiddleware) VerifyToken(c *fiber.Ctx) error{
 	// envio los claims y userAuthInfo a locals y dejo pasar al siguiente middleware
 	c.Locals("claims", claims)
 	c.Locals("userAuthInfo", userAuthInfo)
+	c.Locals(SessionRefreshTokenLocal, c.Cookies("refresh_token"))
 	return c.Next()
 }
 
@@ -65,20 +68,18 @@ func (m *AuthMiddleware) handleRefresh(c *fiber.Ctx) error {
     ctx := c.UserContext()
     refreshToken := c.Cookies("refresh_token")
     if refreshToken == "" {
-		clearCookies(c)
+		clearCookies(c, m.authService.cfg.CookieSecure)
         return apperrors.NewUnauthorizedError(errors.New("failed to get refresh_token cookie from context"), "")
     }
 
     // hasheas el token y buscas en DB
-    newAccessToken, claims, err := m.authService.RefreshAccessToken(ctx, refreshToken)
+    newAccessToken, newRefreshToken, claims, err := m.authService.RefreshAccessToken(ctx, refreshToken)
     if err != nil {
-		clearCookies(c)
+		clearCookies(c, m.authService.cfg.CookieSecure)
         return apperrors.NewUnauthorizedError(fmt.Errorf("failed to refresh access token: %w", err), "")
     }
 
-    // seteás la nueva cookie
-    accessCookie := createAccessCookie(newAccessToken, m.authService.cfg.AccessTokenTTL)
-    c.Cookie(&accessCookie)
+    writeSessionCookies(c, m.authService.cfg, newAccessToken, newRefreshToken)
 
 	userAuthInfo := userauthinfo.UserAuthInfo{
 		UserID:        claims.Sub,
@@ -89,6 +90,7 @@ func (m *AuthMiddleware) handleRefresh(c *fiber.Ctx) error {
 
     c.Locals("claims", claims)
     c.Locals("userAuthInfo", userAuthInfo)
+    c.Locals(SessionRefreshTokenLocal, newRefreshToken)
     return c.Next()
 }
 
@@ -137,11 +139,9 @@ func (m *AuthMiddleware) VerifyAtomicLicense (c *fiber.Ctx) error {
 	
 	valid := m.licenseService.IsValid()
 	if !valid {
-		fmt.Println("licencia falsa")
-		clearCookies(c)
+		clearCookies(c, m.authService.cfg.CookieSecure)
 		return apperrors.NewInvalidLicenseError(errors.New("license is not valid"), "")
 	}
 
-	// fmt.Println("paso por el middleware, es true")
 	return c.Next()
 }

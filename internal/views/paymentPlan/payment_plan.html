@@ -7,8 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 <body>
   <div class="layout">
@@ -28,40 +30,54 @@
      hx-swap="innerHTML swap:120ms settle:120ms"
      style="display:none"></div>
 
-<div class="page-header affiliate-header payment-plan-print-header">
-  <div>
-    <h1>Plan de pago - {{.PaymentPlan.CompanyName}}</h1>
-    <p>Detalle del acuerdo de regularización</p>
-  </div>
-  <div class="header-actions">
-    <button class="btn btn-secondary" type="button"
-            hx-get="/companies/{{.PaymentPlan.CompanyID}}/payment_plans"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="arrow-left"></i>
-      Planes de la empresa
-    </button>
-    <button class="btn btn-secondary" type="button"
-            hx-get="/companies/{{.PaymentPlan.CompanyID}}/payments"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="file-text"></i>
-      Ver pagos
-    </button>
-    <button class="btn btn-secondary print-action" type="button" onclick="window.print()">
-      <i data-lucide="printer"></i>
-      Imprimir
-    </button>
-  </div>
-</div>
+<div class="company-context-layout payment-plan-layout">
+  <aside class="affiliate-sidebar company-context-sidebar">
+    {{template "company-context-sidebar" .CompanyNav}}
 
-<div class="payment-plan-print">
-  <div class="affiliate-grid">
-    <div class="affiliate-main">
-      <section class="card">
-        <h3>Resumen del plan</h3>
-        <div class="plan-summary">
-          <div class="plan-summary-left">
+    <section class="card company-actions-card plan-management-actions plan-management-actions--desktop">
+      <button class="action-btn blue print-action" type="button" onclick="window.print()">
+        <i data-lucide="printer"></i>
+        Imprimir
+      </button>
+      {{if and (.PageContext.UserAuthInfo.CanEdit "company") (ne .PaymentPlan.Status "completed")}}
+      {{if eq .PaymentPlan.Status "pending"}}
+      <button class="action-btn red" type="button"
+              hx-post="/payment_plans/{{.PaymentPlan.ID}}/cancel"
+              hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="x-circle"></i>
+        Cancelar plan
+      </button>
+      {{else if eq .PaymentPlan.Status "cancelled"}}
+      <button class="action-btn green" type="button"
+              hx-post="/payment_plans/{{.PaymentPlan.ID}}/restore"
+              hx-confirm="¿Estás seguro de restaurar este plan de pago?"
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="rotate-ccw"></i>
+        Restaurar plan
+      </button>
+      <button class="action-btn red" type="button"
+              hx-delete="/payment_plans/{{.PaymentPlan.ID}}/permanent"
+              hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="trash-2"></i>
+        Eliminar
+      </button>
+      {{end}}
+      {{end}}
+    </section>
+  </aside>
+
+  {{template "payment-plan-mobile-actions" .}}
+
+  <div class="company-context-body payment-plan-body payment-plan-print">
+    <section class="card payment-plan-summary-card">
+      <div class="plan-summary">
+        <div class="plan-summary-details">
+          <div class="plan-detail-row plan-detail-row--pair plan-detail-row--header">
             <div class="plan-detail-item">
               <span class="detail-label">N° de plan</span>
               <span class="detail-value">PP-{{printf "%05d" .PaymentPlan.ID}}</span>
@@ -72,6 +88,8 @@
                 {{.PaymentPlan.StatusLabel}}
               </span>
             </div>
+          </div>
+          <div class="plan-detail-row plan-detail-row--pair">
             <div class="plan-detail-item">
               <span class="detail-label">Fecha de inicio</span>
               <span class="detail-value with-icon">
@@ -86,6 +104,8 @@
                 {{.PaymentPlan.LastDueDate}}
               </span>
             </div>
+          </div>
+          <div class="plan-detail-row plan-detail-row--pair">
             <div class="plan-detail-item">
               <span class="detail-label">Deuda original</span>
               <span class="detail-value">$ {{formatAmountAR .PaymentPlan.OriginalDebt}}</span>
@@ -94,15 +114,17 @@
               <span class="detail-label">Monto acordado</span>
               <span class="detail-value">$ {{formatAmountAR .PaymentPlan.Amount}}</span>
             </div>
-            <div class="plan-detail-item">
-              <button type="button" class="btn btn-secondary" id="open-included-payments-btn">
-                <i data-lucide="list"></i>
-                Pagos incluidos
-              </button>
-            </div>
           </div>
+          <div class="plan-detail-row">
+            <button type="button" class="btn btn-secondary" id="open-included-payments-btn">
+              <i data-lucide="list"></i>
+              Meses vencidos
+            </button>
+          </div>
+        </div>
 
-          <div class="plan-summary-right">
+        <div class="plan-summary-stats">
+          <div class="plan-summary-stats-col plan-summary-stats-col--left">
             <div class="plan-stat">
               <div class="stat-circle green"><i data-lucide="check"></i></div>
               <div class="stat-info">
@@ -124,6 +146,8 @@
                 <strong>{{.PaymentPlan.OverdueCount}}</strong>
               </div>
             </div>
+          </div>
+          <div class="plan-summary-stats-col plan-summary-stats-col--right">
             <div class="plan-stat">
               <div class="stat-circle blue"><i data-lucide="dollar-sign"></i></div>
               <div class="stat-info">
@@ -140,193 +164,161 @@
             </div>
           </div>
         </div>
-      </section>
-
-      <template id="included-payments-modal-src">
-        <div class="modal-page modal-form-modal">
-          <div class="modal-overlay show" id="included-payments-modal-overlay"
-               onclick="if(event.target===this) document.getElementById('app-modal-container').innerHTML=''">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="included-payments-modal-title"
-                 id="included-payments-modal">
-              <div class="modal-header">
-                <h3 id="included-payments-modal-title">Pagos incluidos</h3>
-                <button class="modal-close" type="button" aria-label="Cerrar"
-                        onclick="document.getElementById('app-modal-container').innerHTML=''">
-                  <i data-lucide="x"></i>
-                </button>
-              </div>
-              <p class="card-subtitle" style="margin:0 0 16px;">Deuda original que se regularizó con este acuerdo.</p>
-              {{if eq (len .PaymentPlan.IncludedPayments) 0}}
-              <p class="helper-text">No hay pagos asociados.</p>
-              {{else}}
-              <table class="included-payments-table">
-                <thead>
-                  <tr>
-                    <th>Período</th>
-                    <th>Monto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {{range .PaymentPlan.IncludedPayments}}
-                  <tr>
-                    <td>{{.MonthName}} {{.Year}}</td>
-                    <td>$ {{formatAmountAR .Amount}}</td>
-                  </tr>
-                  {{end}}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>Total</td>
-                    <td>$ {{formatAmountAR .PaymentPlan.OriginalDebt}}</td>
-                  </tr>
-                </tfoot>
-              </table>
-              {{end}}
-              <button type="button" class="btn-submit"
-                      onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <section class="card">
-        <div class="card-header">
-          <div>
-            <h3>Cuotas del plan</h3>
-            <p class="card-subtitle">Seleccioná una cuota para consultar o actualizar sus datos.</p>
-          </div>
-        </div>
-
-        <div class="installments-grid">
-          {{range .PaymentPlan.Installments}}
-          <div class="monthly-card {{if eq .StatusClass "green"}}green-bg{{else if eq .StatusClass "red"}}red-bg{{else}}gray-bg{{end}}"
-               style="cursor:pointer;"
-               hx-get="/installments/{{.ID}}"
-               hx-target="#app-modal-container"
-               hx-swap="innerHTML">
-            <h3>Cuota {{.InstallmentNumber}}</h3>
-            <div class="monthly-status">
-              <div class="status-icon {{.StatusClass}}">
-                {{if eq .StatusClass "green"}}
-                <i data-lucide="check"></i>
-                {{else if eq .StatusClass "red"}}
-                <i data-lucide="alert-circle"></i>
-                {{else}}
-                <i data-lucide="clock"></i>
-                {{end}}
-              </div>
-              <span class="status-text {{.StatusClass}}">{{.Status}}</span>
-            </div>
-            <p class="monthly-amount"><span class="money" data-amount="{{printf "%.2f" .Amount}}"></span></p>
-            <p class="monthly-date{{if eq .StatusClass "red"}} red{{end}}">{{.DateLabel}}</p>
-          </div>
-          {{end}}
-        </div>
-      </section>
-    </div>
-
-    <aside class="affiliate-sidebar">
-      <section class="card profile-card">
-        <div class="profile-avatar"><i data-lucide="building-2"></i></div>
-        <h3>{{.PaymentPlan.CompanyName}}</h3>
-        <button class="action-btn blue" type="button"
-                hx-get="/companies/{{.PaymentPlan.CompanyID}}"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="building-2"></i>
-          Ver ficha de la empresa
-        </button>
-        <button class="action-btn blue" type="button"
-                hx-get="/companies/{{.PaymentPlan.CompanyID}}/members?show-active=true"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="users"></i>
-          Ver afiliados
-        </button>
-        <button class="action-btn blue" type="button"
-                hx-get="/companies/{{.PaymentPlan.CompanyID}}/payments"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="file-text"></i>
-          Ver pagos
-        </button>
-      </section>
-
-      {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-      <section class="card plan-management-actions">
-        <h3>Gestión</h3>
-        {{if eq .PaymentPlan.Status "pending"}}
-        <button class="action-btn red" type="button"
-                hx-post="/payment_plans/{{.PaymentPlan.ID}}/cancel"
-                hx-confirm="¿Estás seguro de cancelar este plan de pago?"
-                hx-target="#main-content"
-                hx-swap="innerHTML">
-          <i data-lucide="x-circle"></i>
-          Cancelar plan
-        </button>
-        {{else if eq .PaymentPlan.Status "cancelled"}}
-        <button class="action-btn green" type="button"
-                hx-post="/payment_plans/{{.PaymentPlan.ID}}/restore"
-                hx-confirm="¿Estás seguro de restaurar este plan de pago?"
-                hx-target="#main-content"
-                hx-swap="innerHTML">
-          <i data-lucide="rotate-ccw"></i>
-          Restaurar plan
-        </button>
-        <button class="action-btn red" type="button"
-                hx-delete="/payment_plans/{{.PaymentPlan.ID}}/permanent"
-                hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
-                hx-target="#main-content"
-                hx-swap="innerHTML">
-          <i data-lucide="trash-2"></i>
-          Eliminar
-        </button>
-        {{end}}
-      </section>
-      {{end}}
-    </aside>
-  </div>
-
-  <section class="card plan-observations">
-    <h3>Observaciones</h3>
-    {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-    <form hx-put="/payment_plans/{{.PaymentPlan.ID}}"
-          hx-target="#main-content"
-          hx-swap="innerHTML">
-      <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
-        <div class="textarea-wrapper">
-          <textarea name="observations" maxlength="300"
-                    placeholder="Sin observaciones">{{.PaymentPlan.Observations}}</textarea>
-        </div>
-        <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
       </div>
-      <button type="submit" class="btn btn-primary">Guardar</button>
-    </form>
-    {{else}}
-    <p>{{if .PaymentPlan.Observations}}{{.PaymentPlan.Observations}}{{else}}Sin observaciones.{{end}}</p>
-    {{end}}
-  </section>
+    </section>
+
+    <template id="included-payments-modal-src">
+      <div class="modal-page modal-form-modal">
+        <div class="modal-overlay show" id="included-payments-modal-overlay"
+             onclick="if(event.target===this) document.getElementById('app-modal-container').innerHTML=''">
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="included-payments-modal-title"
+               id="included-payments-modal">
+            <div class="modal-header">
+              <h3 id="included-payments-modal-title">Meses vencidos</h3>
+              <button class="modal-close" type="button" aria-label="Cerrar"
+                      onclick="document.getElementById('app-modal-container').innerHTML=''">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+            <p class="card-subtitle" style="margin:0 0 16px;">Deuda original que se regularizó con este acuerdo.</p>
+            {{if eq (len .PaymentPlan.IncludedPayments) 0}}
+            <p class="helper-text">No hay aportes asociados.</p>
+            {{else}}
+            <table class="included-payments-table">
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .PaymentPlan.IncludedPayments}}
+                <tr>
+                  <td>{{.MonthName}} {{.Year}}</td>
+                  <td>$ {{formatAmountAR .Amount}}</td>
+                </tr>
+                {{end}}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td>$ {{formatAmountAR .PaymentPlan.OriginalDebt}}</td>
+                </tr>
+              </tfoot>
+            </table>
+            {{end}}
+            <button type="button" class="btn-submit"
+                    onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <section class="card payment-plan-installments-card">
+      <div class="installments-grid payment-plan-installments-grid">
+        {{range .PaymentPlan.Installments}}
+        <div class="monthly-card {{if eq .StatusClass "green"}}green-bg{{else if eq .StatusClass "red"}}red-bg{{else}}gray-bg{{end}}"
+             style="cursor:pointer;"
+             hx-get="/installments/{{.ID}}"
+             hx-target="#app-modal-container"
+             hx-swap="innerHTML">
+          <h3>Cuota {{.InstallmentNumber}}</h3>
+          <div class="monthly-status">
+            <div class="status-icon {{.StatusClass}}">
+              {{if eq .StatusClass "green"}}
+              <i data-lucide="check"></i>
+              {{else if eq .StatusClass "red"}}
+              <i data-lucide="alert-circle"></i>
+              {{else}}
+              <i data-lucide="clock"></i>
+              {{end}}
+            </div>
+            <span class="status-text {{.StatusClass}}">{{.Status}}</span>
+          </div>
+          <p class="monthly-amount"><span class="money" data-amount="{{printf "%.2f" .Amount}}"></span></p>
+          <p class="monthly-date{{if eq .StatusClass "red"}} red{{end}}">{{.DateLabel}}</p>
+        </div>
+        {{end}}
+      </div>
+    </section>
+
+    <section class="card plan-observations">
+      <h3>Observaciones</h3>
+      {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+      <form hx-put="/payment_plans/{{.PaymentPlan.ID}}"
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+        <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
+          <div class="textarea-wrapper">
+            <textarea name="observations" maxlength="300"
+                      placeholder="Sin observaciones">{{.PaymentPlan.Observations}}</textarea>
+          </div>
+          <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </form>
+      {{else}}
+      <p>{{if .PaymentPlan.Observations}}{{.PaymentPlan.Observations}}{{else}}Sin observaciones.{{end}}</p>
+      {{end}}
+      <div class="entity-meta" style="margin-top:16px;">
+        <i data-lucide="clock"></i>
+        <span>Creado: {{.PaymentPlan.CreatedAt}} &bull; Actualizado: {{.PaymentPlan.UpdatedAt}}</span>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script>
-  lucide.createIcons();
-  document.querySelectorAll('.money').forEach(function (el) {
-    var n = Number(el.getAttribute('data-amount'));
-    if (Number.isNaN(n)) return;
-    el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  });
+  (function initPaymentPlanPage() {
+    function formatMoney() {
+      document.querySelectorAll('#main-content .money, .payment-plan-body .money').forEach(function(el) {
+        if (el.dataset.formatted === '1') return;
+        var n = Number(el.getAttribute('data-amount'));
+        if (Number.isNaN(n)) return;
+        el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        el.dataset.formatted = '1';
+      });
+    }
 
-  (function () {
+    function closeCompanyActionsMenu() {
+      var menu = document.getElementById('company-actions-menu');
+      var toggle = document.getElementById('company-actions-toggle');
+      if (menu) menu.classList.remove('show');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (window.lucide) lucide.createIcons();
+    formatMoney();
+
+    if (!document.body.dataset.companyActionsBound) {
+      document.body.dataset.companyActionsBound = '1';
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#company-actions-dropdown')) {
+          closeCompanyActionsMenu();
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id !== 'main-content') return;
+        if (window.lucide) lucide.createIcons();
+        document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+          if (el.dataset.actionsBound) return;
+          el.dataset.actionsBound = '1';
+          el.addEventListener('click', closeCompanyActionsMenu);
+        });
+      });
+    }
+
     var btn = document.getElementById('open-included-payments-btn');
     var src = document.getElementById('included-payments-modal-src');
-    if (!btn || !src) return;
-    btn.addEventListener('click', function () {
-      var container = document.getElementById('app-modal-container');
-      if (!container) return;
-      container.innerHTML = '';
-      container.appendChild(src.content.cloneNode(true));
-      if (window.lucide) lucide.createIcons();
-    });
+    if (btn && src) {
+      btn.addEventListener('click', function () {
+        var container = document.getElementById('app-modal-container');
+        if (!container) return;
+        container.innerHTML = '';
+        container.appendChild(src.content.cloneNode(true));
+        if (window.lucide) lucide.createIcons();
+      });
+    }
   })();
 </script>
 {{end}}

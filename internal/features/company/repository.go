@@ -188,7 +188,7 @@ func (r *CompanyRepository) Update(ctx context.Context, id int, company Company)
 }
 
 func (r *CompanyRepository) SoftDelete(ctx context.Context, id int) (int, error){
-	query := "UPDATE companies SET deleted_at = NOW() WHERE id_company = ?"
+	query := "UPDATE companies SET deleted_at = NOW() WHERE id_company = ? AND deleted_at IS NULL"
 	res, err := r.db.ExecContext(ctx, query, id)
 	if err!=nil{
 		return 0, fmt.Errorf("failed to soft delete company: %w", err)
@@ -201,7 +201,7 @@ func (r *CompanyRepository) SoftDelete(ctx context.Context, id int) (int, error)
 }
 
 func (r *CompanyRepository) Restore(ctx context.Context, tx *sqlx.Tx, id int) (int, error){
-	query := "UPDATE companies SET deleted_at = NULL WHERE id_company = ?"
+	query := "UPDATE companies SET deleted_at = NULL WHERE id_company = ? AND deleted_at IS NOT NULL"
 	
 	res, err := tx.ExecContext(ctx, query, id)
 	if err!=nil{
@@ -215,7 +215,7 @@ func (r *CompanyRepository) Restore(ctx context.Context, tx *sqlx.Tx, id int) (i
 }
 
 func (r *CompanyRepository) HardDelete(ctx context.Context, id int) error {
-	query := `DELETE FROM companies WHERE id_company = ? AND deleted_at IS NOT NULL'`;
+	query := `DELETE FROM companies WHERE id_company = ? AND deleted_at IS NOT NULL`
 	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to hard delete company: %w", err)

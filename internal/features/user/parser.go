@@ -13,20 +13,11 @@ func ToModel(req Request) User {
 func ToResponseFromRequest(req Request) Response {
 	admin, roles := req.ToPermissions()
 
+	// Never echo passwords back into HTML after validation errors.
 	return Response{
-		Username:        req.Username,
-		Password:        req.Password,
-		ConfirmPassword: req.ConfirmPassword,
-		Admin:           admin,
-		ResourceRoles:   roles,
-	}
-}
-
-func ToPasswordResponseFromRequest(req passwordRequest) passwordResponse {
-	return passwordResponse{
-		CurrentPassword: req.CurrentPassword,
-		Password:        req.Password,
-		ConfirmPassword: req.ConfirmPassword,
+		Username:      req.Username,
+		Admin:         admin,
+		ResourceRoles: roles,
 	}
 }
 

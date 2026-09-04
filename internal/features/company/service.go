@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 )
 
 type CompanyService struct{
@@ -35,6 +35,18 @@ func (s *CompanyService) GetName(ctx context.Context, id int) (string, error) {
 		return "", err
 	}
 	return company.Name, nil
+}
+
+func (s *CompanyService) GetNavDetails(ctx context.Context, id int) (name, number, address, phone string, err error) {
+	company, err := s.Get(ctx, id)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	number = ""
+	if company.CompanyNumber != nil {
+		number = *company.CompanyNumber
+	}
+	return company.Name, number, company.Address, company.Phone, nil
 }
 
 func (s *CompanyService) ListActiveIDs(ctx context.Context) ([]int, error) {
@@ -153,7 +165,7 @@ func (s *CompanyService) SoftDelete(ctx context.Context, id int) error {
 	}
 
 	if rows == 0{
-		return apperrors.NewBusinessError(fmt.Errorf("failed to soft delete company: the entity is already inactive or doesn't exist"), "La empresa ya se encuentra inactiva o no existe.")
+		return apperrors.NewBusinessError(fmt.Errorf("failed to soft delete company: the entity is already inactive or doesn't exist"), "No se pudo completar la operación.")
 	}
 
 	return nil
@@ -180,7 +192,7 @@ func (s *CompanyService) Restore(ctx context.Context, id int) error{
 		return apperrors.NewDatabaseError(err, "")
 	}
 	if rows == 0{
-		return apperrors.NewBusinessError(errors.New("failed to restore company: the entity is already active or doesn't exist"), "La empresa ya se encuentra activa o no existe." )
+		return apperrors.NewBusinessError(errors.New("failed to restore company: the entity is already active or doesn't exist"), "No se pudo completar la operación.")
 	}
 
 	// el month desde hoy y el año el de hoy

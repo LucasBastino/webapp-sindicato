@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	pu "github.com/LucasBastino/webapp-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 var monthNames = []string{
@@ -99,6 +99,7 @@ func mergetoResponse(p Payment, req request) (response, error) {
 		IsPaid:          isPaid,
 		Observations:    pu.MergeField(p.Observations, req.Observations),
 		IsInPaymentPlan: p.IsInPaymentPlan,
+		DueDateRFC:      p.DueDate.Format(time.RFC3339),
 		UpdatedAt:       p.UpdatedAt.Format("02/01/2006"),
 	}, nil
 }
@@ -115,6 +116,7 @@ func toResponse(p Payment) response {
 		IsPaid:          p.PaidAt != nil,
 		Observations:    p.Observations,
 		IsInPaymentPlan: p.IsInPaymentPlan,
+		DueDateRFC:      p.DueDate.Format(time.RFC3339),
 		UpdatedAt:       p.UpdatedAt.Format("02/01/2006"),
 	}
 }
@@ -128,7 +130,7 @@ func toGridResponse(p Payment) gridResponse {
 	switch status {
 	case "Completado":
 		if paidAt != "" {
-			dateLabel = paidAt
+			dateLabel = "Se pagó el " + paidAt
 		}
 	case "Vencido":
 		if dueDate != "" {

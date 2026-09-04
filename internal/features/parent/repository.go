@@ -67,8 +67,8 @@ func (r *ParentRepository) Insert(ctx context.Context, tx *sqlx.Tx, parent Paren
 		cuil,
 		observations
 		)
-		VALUES (
-		:id_member,
+		SELECT
+		M.id_member,
 		:name,
 		:last_name,
 		:relationship,
@@ -76,10 +76,20 @@ func (r *ParentRepository) Insert(ctx context.Context, tx *sqlx.Tx, parent Paren
 		:gender,
 		:cuil,
 		:observations
-		)`;
+		FROM members M
+		WHERE M.id_member = :id_member
+			AND M.deleted_at IS NULL
+		`
 	res, err := tx.NamedExecContext(ctx, query, parent)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert parent: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected while inserting parent: %w", err)
+	}
+	if rows == 0 {
+		return 0, nil
 	}
 	id, err := res.LastInsertId()
 	if err!=nil{
@@ -91,16 +101,19 @@ func (r *ParentRepository) Insert(ctx context.Context, tx *sqlx.Tx, parent Paren
 func (r *ParentRepository) Update(ctx context.Context, id int, parent Parent) error {
 	parent.ID = id
 	query := `
-	UPDATE parents
+	UPDATE parents P
+	INNER JOIN members M
+		ON M.id_member = P.id_member
+		AND M.deleted_at IS NULL
 	SET
-    name = :name,
-    last_name = :last_name,
-    relationship = :relationship,
-    birthday = :birthday,
-    gender = :gender,
-    cuil = :cuil,
-    observations = :observations
-	WHERE id_parent = :id_parent`
+    P.name = :name,
+    P.last_name = :last_name,
+    P.relationship = :relationship,
+    P.birthday = :birthday,
+    P.gender = :gender,
+    P.cuil = :cuil,
+    P.observations = :observations
+	WHERE P.id_parent = :id_parent`
 	_, err := r.db.NamedExecContext(ctx, query, parent)
 	if err != nil {
 		return fmt.Errorf("failed to update parent: %w", err)

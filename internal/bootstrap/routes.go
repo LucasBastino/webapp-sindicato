@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"github.com/LucasBastino/webapp-sindicato/internal/http/middlewares"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -16,9 +17,10 @@ func registerRoutes(app *fiber.App, http *httpComponents) {
 	public :=  app.Group("/")
 
 	public.Get("/login", http.auth.handler.RenderLogin)
-	public.Post("/login", http.auth.handler.Login)
+	public.Post("/login", middlewares.LoginRateLimiter(), http.auth.handler.Login)
+	public.Get("/forgot-password", http.auth.handler.RenderForgotPassword)
 	public.Get("/expired_session", http.auth.handler.RenderExpiredSession)
-	public.Get("/verifyLicense", http.license.CheckUpdatedLicense)
+	public.Post("/verifyLicense", middlewares.VerifyLicenseRateLimiter(), http.license.CheckUpdatedLicense)
 	
 	// todo: cambiar despues
 	app.Get("/favicon.ico", func(c *fiber.Ctx) error {
@@ -94,5 +96,4 @@ func registerRoutes(app *fiber.App, http *httpComponents) {
 	protected.Get("/dashboard", http.pages.RenderDashboard)
 	protected.Get("/reports", http.pages.RenderReports)
 	protected.Get("/support", http.pages.RenderSupport)
-	protected.Get("/backup_DB", http.backUp.Backup)
 }

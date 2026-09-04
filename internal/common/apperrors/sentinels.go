@@ -8,6 +8,6 @@ var (
 	ErrInvalidPermissions       = errors.New("invalid permissions")
 	ErrCannotDeleteSelf         = errors.New("cannot delete own user account")
 	ErrCannotEditOwnPermissions = errors.New("cannot edit own permissions")
-	ErrInvalidLoginUser         = errors.New("invalid login user")
-	ErrInvalidLoginPassword     = errors.New("invalid login password")
+	ErrCannotRemoveLastAdmin    = errors.New("cannot remove last admin")
+	ErrInvalidLogin             = errors.New("invalid login credentials")
 )

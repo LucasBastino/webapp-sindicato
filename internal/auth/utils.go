@@ -7,83 +7,77 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/gofiber/fiber/v2"
 )
 
-func createAccessCookie(token string, ttl time.Duration) fiber.Cookie {
+func createAccessCookie(token string, ttl time.Duration, secure bool) fiber.Cookie {
 	return fiber.Cookie{
-		Name:		"access_token",
-		Value:      token,
-		Path:       "/",
-		HTTPOnly:   true,
-		Secure:     false,
-		SameSite:   "Lax",
-		Expires:	time.Now().Add(ttl),
-		// SessionOnly: true,
-		// para subir a un dominio
-		// Secure:   true,
-		// SameSite: "None",
-	}
-}
-
-func createRefreshCookie(token string, ttl time.Duration) fiber.Cookie {
-	return fiber.Cookie{
-		Name:     "refresh_token",
+		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
 		HTTPOnly: true,
-		Secure:   false,        // true en producción con HTTPS
+		Secure:   secure,
 		SameSite: "Lax",
 		Expires:  time.Now().Add(ttl),
 	}
 }
 
-func clearAccessCookie() fiber.Cookie {
+func createRefreshCookie(token string, ttl time.Duration, secure bool) fiber.Cookie {
 	return fiber.Cookie{
-		Name:     "access_token",
-		Value:    "",
-		Expires:  time.Now().Add(-time.Hour), // Expired 1 hour ago
+		Name:     "refresh_token",
+		Value:    token,
+		Path:     "/",
 		HTTPOnly: true,
-		Secure:   false,
+		Secure:   secure,
 		SameSite: "Lax",
-		// para subir a un dominio
-		// Secure:   true,
-		// SameSite: "None",
+		Expires:  time.Now().Add(ttl),
 	}
 }
 
-func clearRefreshCookie() fiber.Cookie {
+func clearAccessCookie(secure bool) fiber.Cookie {
+	return fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: "Lax",
+	}
+}
+
+func clearRefreshCookie(secure bool) fiber.Cookie {
 	return fiber.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour),
 		Path:     "/",
 		HTTPOnly: true,
-		Secure:   false,
+		Secure:   secure,
 		SameSite: "Lax",
 	}
 }
 
-func clearCookies(c *fiber.Ctx) {
-	refreshCookie := clearRefreshCookie()
+func clearCookies(c *fiber.Ctx, secure bool) {
+	refreshCookie := clearRefreshCookie(secure)
 	c.Cookie(&refreshCookie)
 
-	accessCookie := clearAccessCookie()
+	accessCookie := clearAccessCookie(secure)
 	c.Cookie(&accessCookie)
 }
 
-// Para el refresh token se usa un hash determinístico, no como el bcrypt que es costoso, ese se usa para constraseñas 
+// Para el refresh token se usa un hash determinístico, no como el bcrypt que es costoso, ese se usa para constraseñas
 func hashToken(token string) string {
-    hash := sha256.Sum256([]byte(token))
-    return hex.EncodeToString(hash[:])
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
 
 func generateRandomToken() (string, error) {
-    bytes := make([]byte, 32)
-    _, err := rand.Read(bytes)
-    if err != nil {
-        return "", apperrors.NewInternalError(fmt.Errorf("failed to generate refresh token: %w", err), "")
-    }
-    return hex.EncodeToString(bytes), nil
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", apperrors.NewInternalError(fmt.Errorf("failed to generate refresh token: %w", err), "")
+	}
+	return hex.EncodeToString(bytes), nil
 }

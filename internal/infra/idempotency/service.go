@@ -5,17 +5,19 @@ import (
 	"errors"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/jmoiron/sqlx"
 )
 
 type IdempotencyService struct {
 	repo *IdempotencyRepository
+	ttl  time.Duration
 }
 
 func NewIdempotencyService(repo *IdempotencyRepository, ttl time.Duration) *IdempotencyService {
 	return &IdempotencyService{
 		repo: repo,
+		ttl:  ttl,
 	}
 }
 
@@ -35,7 +37,7 @@ func (s *IdempotencyService) CheckOrCreate(ctx context.Context, key string, requ
 		return record, nil
 	}
 
-	err = s.repo.Create(ctx, key, requestHash, time.Now().Add(24*time.Hour))
+	err = s.repo.Create(ctx, key, requestHash, time.Now().Add(s.ttl))
 	if err != nil {
 		return nil, apperrors.NewDatabaseError(err, "")
 	}

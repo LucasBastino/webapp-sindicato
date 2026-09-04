@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	p "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	p "github.com/LucasBastino/webapp-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 
@@ -34,6 +34,7 @@ func toModel(req request) (Member, error) {
 	}
 
 	// chequeo el *string por si es nil
+	memberNumber := p.StrOrEmpty(req.MemberNumber)
 	cuil := p.StrOrEmpty(req.Cuil)
 
 	// si es un CPA lo paso a mayusculas
@@ -53,7 +54,7 @@ func toModel(req request) (Member, error) {
         Address:       req.Address,
         PostalCode:    req.PostalCode,
         District:      req.District,
-        MemberNumber:  req.MemberNumber,
+        MemberNumber:  memberNumber,
         Cuil:          cuil,
         CompanyID:  companyID,
         Category:      req.Category,
@@ -81,6 +82,7 @@ func memberStatusFlags(m Member) (isDeleted, isInactive bool) {
 func toResponse(m Member) response {
 
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
+	memberNumber := p.StrOrDBNull(m.MemberNumber)
 	cuil := p.StrOrDBNull(m.Cuil)
 	isDeleted, isInactive := memberStatusFlags(m)
 
@@ -97,7 +99,7 @@ func toResponse(m Member) response {
         Address:       m.Address,
         PostalCode:    m.PostalCode,
         District:      m.District,
-        MemberNumber:  m.MemberNumber,
+        MemberNumber:  memberNumber,
         // Affiliated:    m.Affiliated,
         Cuil:          cuil,
         CompanyID:  m.CompanyID,
@@ -122,9 +124,12 @@ func toResponse(m Member) response {
 
 // cuando da error el formulario queriendo crear
 func toResponseFromRequest(req request) (response, error) {
-	companyID, err := strconv.Atoi(req.CompanyID)
-	if err!=nil{
-		return response{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse company_id: %w", err), "")
+	companyID := 0
+	if req.CompanyID != "" {
+		parsed, err := strconv.Atoi(req.CompanyID)
+		if err == nil {
+			companyID = parsed
+		}
 	}
 
 	return response{
@@ -141,21 +146,25 @@ func toResponseFromRequest(req request) (response, error) {
 		District:      req.District,
 		MemberNumber:  req.MemberNumber,
 		Cuil:          req.Cuil,
-		CompanyID:  companyID,
+		CompanyID:     companyID,
 		Category:      req.Category,
 		EntryDate:     req.EntryDate,
 		Observations:  req.Observations,
-		CompanyName: req.CompanyName,
+		CompanyName:   req.CompanyName,
 	}, nil
 }
 
 // cuando da error el formulario queriendo editar
 func mergetoResponse(m Member, req request) (response, error) {
-	companyID, err := strconv.Atoi(req.CompanyID)
-	if err!=nil{
-		return response{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse company_id: %w", err), "")
+	companyID := 0
+	if req.CompanyID != "" {
+		parsed, err := strconv.Atoi(req.CompanyID)
+		if err == nil {
+			companyID = parsed
+		}
 	}
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
+	memberNumber := p.StrOrDBNull(m.MemberNumber)
 	cuil := p.StrOrDBNull(m.Cuil)
 	// de esta manera, puede compararse con un string vacio del request, sino no son del mismo tipo y por lo tanto, no son comparables
 	isDeleted, isInactive := memberStatusFlags(m)
@@ -172,7 +181,7 @@ func mergetoResponse(m Member, req request) (response, error) {
 		Address:        p.MergeField(m.Address, req.Address),
 		PostalCode:     p.MergeField(m.PostalCode, req.PostalCode),
 		District:       p.MergeField(m.District, req.District),
-		MemberNumber:   p.MergeField(m.MemberNumber, req.MemberNumber),
+		MemberNumber:   p.MergeField(memberNumber, req.MemberNumber),
 		// Affiliated:     affiliated,
 		Cuil:           p.MergeField(cuil, req.Cuil),
 		CompanyID:   companyID,
@@ -195,7 +204,7 @@ func toTableResponse(m Member) tableResponse {
         Name:         m.Name,
         LastName:     m.LastName,
         Dni:          m.Dni,
-        MemberNumber: m.MemberNumber,
+        MemberNumber: p.StrOrDBNull(m.MemberNumber),
         CompanyName:  m.CompanyName,
         IsDeleted:    isDeleted,
         IsInactive:   isInactive,

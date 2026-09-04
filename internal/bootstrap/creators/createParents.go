@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/parent"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/parent"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -95,7 +95,8 @@ func CreateParents(db *sqlx.DB) error {
 		case 1, 3, 5, 7, 8, 10, 12:
 			day = rand.IntN(30) + 1
 		}
-		cuil := fmt.Sprintf("%d-%s-%d", rand.IntN(9)+20, createDNI(day, month, year), rand.IntN(8)+1)
+		dni := createDNI(day, month, year)
+		cuil := cuilFromDNI(dni)
 		p.Cuil = &cuil
 
 		p.Birthday = time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
@@ -142,7 +143,7 @@ func CreateParents(db *sqlx.DB) error {
 		return nil
 	}
 
-	query := "INSERT INTO parents (name, last_name, relationship, birthday, gender, cuil, id_member, observations) VALUES"
+	query := "INSERT IGNORE INTO parents (name, last_name, relationship, birthday, gender, cuil, id_member, observations) VALUES"
 	placeholders := make([]string, 0, len(parents))
 	args := make([]any, 0, len(parents)*8)
 	for _, p := range parents {

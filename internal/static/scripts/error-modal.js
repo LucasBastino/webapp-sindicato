@@ -1,15 +1,24 @@
- function showErrorModal(errorMsg) {
-      const modalContainer = document.getElementById("error-modal-container");
-      const modal = document.getElementById("error-modal");
-      modal.innerHTML = errorMsg;
-      modalContainer.classList.remove("hidden");
+// Allow HTMX to swap server-rendered error modals on 4xx/5xx.
+// Do not assign xhr.responseText via innerHTML (XSS surface).
+(function () {
+  document.body.addEventListener("htmx:beforeSwap", function (event) {
+    var xhr = event.detail.xhr;
+    if (!xhr || xhr.status < 400) {
+      return;
     }
 
-    function closeErrorModal() {
-      document.getElementById("error-modal-container").classList.add("hidden");
+    // Session / auth redirects must not be swapped into the modal container.
+    if (xhr.status === 401 || xhr.getResponseHeader("HX-Redirect")) {
+      event.detail.shouldSwap = false;
+      return;
     }
 
-    // listen to htmx errors
-    document.body.addEventListener("htmx:responseError", (event) => {
-      showErrorModal(event.detail.xhr.responseText);
-    });
+    var container = document.getElementById("app-modal-container");
+    if (!container) {
+      return;
+    }
+
+    event.detail.shouldSwap = true;
+    event.detail.target = container;
+  });
+})();

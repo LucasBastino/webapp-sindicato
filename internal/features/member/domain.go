@@ -3,7 +3,7 @@ package member
 import (
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
 )
 
 type Member struct {
@@ -24,8 +24,8 @@ type Member struct {
 	PostalCode    string    `db:"postal_code"`
 	District      string    `db:"district"`
 
-	MemberNumber  string    `db:"member_number"`
-	Cuil          *string    `db:"cuil"`
+	MemberNumber  *string   `db:"member_number"`
+	Cuil          *string   `db:"cuil"`
 	Category      string    `db:"category"`
 	EntryDate     *time.Time `db:"entry_date"`
 

@@ -3,7 +3,7 @@ package company
 import (
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
 )
 
 type Company struct {

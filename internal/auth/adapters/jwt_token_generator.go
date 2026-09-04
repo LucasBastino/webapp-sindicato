@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	authdomain "github.com/LucasBastino/app-sindicato/internal/auth/domain"
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	authdomain "github.com/LucasBastino/webapp-sindicato/internal/auth/domain"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -32,24 +32,21 @@ func (j *JwtTokenGenerator) Create(JWTSecret string, defaulthClaims authdomain.A
 }
 
 
-func (j *JwtTokenGenerator) Verify(JWTSecret string, tokenStr string) (*authdomain.AuthClaims, error){
-	// jwt.Parse devuelve un jwt.Claims, no un jwt.MapClaims
+func (j *JwtTokenGenerator) Verify(JWTSecret string, tokenStr string) (*authdomain.AuthClaims, error) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return []byte(JWTSecret), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return nil, apperrors.NewUnauthorizedError(fmt.Errorf("failed to parse token: %w", err), "")
 	}
-	// jwt.Parse no siempre devuelve error cuando el token esta expirado o mal formado, a veces devuelve un token no valido, por lo tanto hay que verificarlo
 	if !token.Valid {
-    return nil, apperrors.NewUnauthorizedError(errors.New("invalid token"), "")
-}
-	// aca creo que va la funcion JwtClaimsToAuthClaims, pero capaz no hace falta y con lo de abajo ya esta, probar
-	// porque en create si o si necesitas pasar un jwtmapclaims, y no se puede hacer type assertion porque el jwtmapclaims no tiene getExpiry por ejemplo
-	// pero si se puede pasar de jwtmapclaims a authclaims porque tiene todos los campos? no se, me parece raro
-	// claims := token.Claims.(authClaims.AuthClaims)
+		return nil, apperrors.NewUnauthorizedError(errors.New("invalid token"), "")
+	}
 	jwtMapclaims, ok := token.Claims.(jwt.MapClaims)
-	if !ok{
+	if !ok {
 		return nil, apperrors.NewUnauthorizedError(errors.New("invalid token claims type"), "")
 	}
 	defaulthClaims := j.normalizer.NormalizeClaims(jwtMapclaims)

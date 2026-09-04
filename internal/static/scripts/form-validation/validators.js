@@ -1,4 +1,5 @@
 import * as v from "./helpers.js"
+import { getInputValue } from "./common.js"
 
 
 // PERSONAL INFO
@@ -105,7 +106,6 @@ export function validateAddress(input){
 export function validateDistrict(input){
     // borro los espacios y caracteres especiales permitidos
     // y recien despues me fijo si esta vacio
-    // todo: esto cambiarlo, va al reves para los not null, el mensaje de arriba esta bien
     if (input === "") return { valid: true, error: "" }
     
     input = v.removeChars(input, " #-'&~,.º")
@@ -166,7 +166,7 @@ export function validateEmail(input){
 
     const parts = input.split("@")
     if (parts.length != 2) return { valid: false, error: "Formato no válido." }
-    const [local, domain] = parts
+    let [local, domain] = parts
     if (
         local.length === 0 ||
         !domain.includes(".") ||
@@ -178,6 +178,9 @@ export function validateEmail(input){
     }
 
     const domainParts = domain.split(".")
+    if (domainParts.includes("")){
+        return { valid: false, error: "Formato no válido." } // cubre "".gmail.com", "gmail."", "gmail..com"
+    }
     if (
         domainParts.length < 2 ||
         // si la ultima parte (el TLD) no tiene minimo 2 caracteres no es válido
@@ -186,8 +189,12 @@ export function validateEmail(input){
         return { valid: false, error: "Formato no válido." }  
         }
 
+    domain = v.removeChars(domain, ".")
+    let result = v.isAlphanumeric(domain)
+    if (!result.valid) return result
+
     input = v.removeChars(input, "!#$%&'*+-/=?^_`{|}~.@")
-    let result = v.isAlphanumeric(input)
+    result = v.isAlphanumeric(input)
     if (!result.valid) return result
 
     return v.isNotLongerThan(input, 50)
@@ -425,29 +432,27 @@ export function validateUsername(input){
 export function validatePassword(input){
     if (input === "") return { valid: false, error: "Campo requerido." }
 
-    input = v.removeChars(input, " #-'&,.!?*+")
-
-    let result = v.isAlphanumeric(input)
+    let result = v.isNotLongerThan(input, 64)
     if (!result.valid) return result
 
     result = v.hasAtLeast(input, 8)
     if (!result.valid) return result
 
-    return v.isNotLongerThan(input, 20)
+    input = v.removeChars(input, " @#-'&,.!?*+")
+
+    return v.isAlphanumeric(input)
 }
 
 export function validateConfirmPassword(input){
     if (input === "") return { valid: false, error: "Campo requerido." }
 
-    input = v.removeChars(input, " #-'&,.!?*+")
+    const password = getInputValue("password").trim()
 
-    let result = v.isAlphanumeric(input)
-    if (!result.valid) return result
+    if (input !== password) {
+        return { valid: false, error: "Las contraseñas no coinciden." }
+    }
 
-    result = v.hasAtLeast(input, 8)
-    if (!result.valid) return result
-
-    return v.isNotLongerThan(input, 20)
+    return { valid: true, error: "" }
 }
 
 

@@ -1,0 +1,52 @@
+{{define "payment-plan-mobile-actions"}}
+<div class="company-ficha-mobile-actions payment-plan-mobile-actions">
+  <div class="company-actions-dropdown actions-dropdown" id="company-actions-dropdown">
+    <button type="button"
+            class="btn btn-outline company-actions-trigger actions-trigger"
+            id="company-actions-toggle"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-controls="company-actions-menu">
+      Acciones
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div class="actions-menu company-actions-menu" id="company-actions-menu" role="menu">
+      {{template "company-nav-actions-menu" .CompanyNav}}
+      <div class="company-actions-menu-divider" role="separator"></div>
+      <button type="button" class="company-nav-item" role="menuitem" onclick="window.print()">
+        <i data-lucide="printer"></i>
+        Imprimir
+      </button>
+      {{if and (.PageContext.UserAuthInfo.CanEdit "company") (ne .PaymentPlan.Status "completed")}}
+      {{if eq .PaymentPlan.Status "pending"}}
+      <button type="button" class="company-nav-item danger" role="menuitem"
+              hx-post="/payment_plans/{{.PaymentPlan.ID}}/cancel"
+              hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="x-circle"></i>
+        Cancelar plan
+      </button>
+      {{else if eq .PaymentPlan.Status "cancelled"}}
+      <button type="button" class="company-nav-item success" role="menuitem"
+              hx-post="/payment_plans/{{.PaymentPlan.ID}}/restore"
+              hx-confirm="¿Estás seguro de restaurar este plan de pago?"
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="rotate-ccw"></i>
+        Restaurar plan
+      </button>
+      <button type="button" class="company-nav-item danger" role="menuitem"
+              hx-delete="/payment_plans/{{.PaymentPlan.ID}}/permanent"
+              hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="trash-2"></i>
+        Eliminar
+      </button>
+      {{end}}
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}

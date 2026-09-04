@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Crear Plan de Pago</title>
+  <title>Nuevo plan de pago</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -42,17 +44,21 @@
 {{define "add-payment-plan-content"}}
 
     <div class="page-header affiliate-header">
-      <h1>Crear Plan de Pago</h1>
-      <p>Seleccioná los pagos vencidos e ingresá las cuotas del plan</p>
-      <div class="header-actions">
-        <button class="btn btn-primary" id="btn-add-payment-plan" type="submit" form="payment-plan-form">
-          <i data-lucide="plus"></i>
-          Crear plan
-        </button>
+      <div>
+        <h1>Nuevo plan de pago</h1>
+        <p>Seleccioná los aportes vencidos e ingresá las cuotas del plan</p>
       </div>
     </div>
 
-    <div class="affiliate-grid">
+    <div class="company-context-layout">
+      <aside class="affiliate-sidebar company-context-sidebar">
+        {{template "company-context-sidebar" .CompanyNav}}
+      </aside>
+
+      {{template "company-mobile-actions" .CompanyNav}}
+
+      <div class="company-context-body">
+    <div class="affiliate-grid affiliate-grid--form-only">
 
       <form id="payment-plan-form"
             class="affiliate-main is-editing"
@@ -66,13 +72,13 @@
           <div class="card-title">
             <div class="card-title-left">
               <i data-lucide="list-checks"></i>
-              <h3>Pagos vencidos a incluir</h3>
+              <h3>Aportes vencidos a incluir</h3>
             </div>
             <i data-lucide="chevron-down"></i>
           </div>
           <div class="card-content">
             {{if eq (len .OverduePayments) 0}}
-              <p class="helper-text">No hay pagos vencidos disponibles para esta empresa.</p>
+              <p class="helper-text">No hay aportes vencidos disponibles para esta empresa.</p>
             {{else}}
               <div class="payment-plan-checklist{{if index .Errors "payment-ids"}} input-invalid{{end}}">
                 {{range .OverduePayments}}
@@ -83,10 +89,11 @@
                          value="{{.ID}}"
                          data-amount="{{printf "%.2f" .Amount}}"
                          {{if index $.PaymentPlan.SelectedPaymentIDs .ID}}checked{{end}}>
-                  <span class="checklist-item-text">
-                    <strong>{{.MonthName}} {{.Year}}</strong>
-                    — <span class="money" data-amount="{{printf "%.2f" .Amount}}"></span>
-                    <span class="checklist-due">Venció {{.DueDate}}</span>
+                  <span class="checklist-item-body">
+                    <span class="checklist-item-main">
+                      <strong>{{.MonthName}} {{.Year}}</strong>
+                    </span>
+                    <span class="checklist-item-amount money" data-amount="{{printf "%.2f" .Amount}}"></span>
                   </span>
                 </label>
                 {{end}}
@@ -112,7 +119,7 @@
                 <label>Monto total <span class="required-marker">*</span></label>
                 <input type="text" id="amount" name="amount" value="{{if .PaymentPlan.Amount}}{{formatAmountInput .PaymentPlan.Amount}}{{end}}" />
                 <p class="amount-error field-error">{{with index .Errors "amount"}}{{.}}{{end}}</p>
-                <span class="helper-text">Se calcula según los pagos seleccionados, pero podés modificarlo.</span>
+                <span class="helper-text">Se calcula según los aportes seleccionados, pero podés modificarlo.</span>
               </div>
 
               <div class="form-group{{if index .Errors "number-of-installments"}} input-invalid{{end}}">
@@ -123,7 +130,7 @@
 
               <div class="form-group{{if index .Errors "first-due-date"}} input-invalid{{end}}">
                 <label>Primera fecha de vencimiento <span class="required-marker">*</span></label>
-                <input type="text" id="first-due-date" name="first-due-date" value="{{.PaymentPlan.FirstDueDate}}" placeholder="DD/MM/AAAA" />
+                <input type="text" id="first-due-date" name="first-due-date" value="{{.PaymentPlan.FirstDueDate}}" placeholder="DD/MM/AAAA" data-date-input inputmode="numeric" autocomplete="off" maxlength="10" />
                 <p class="first-due-date-error field-error">{{with index .Errors "first-due-date"}}{{.}}{{end}}</p>
               </div>
 
@@ -167,18 +174,8 @@
 
       </form>
 
-      <aside class="affiliate-sidebar">
-
-        <div class="card profile-card">
-          <div class="profile-avatar">
-            <i data-lucide="file-text"></i>
-          </div>
-          <h3>Nuevo plan de pago</h3>
-          <div class="status-divider"></div>
-        </div>
-
-      </aside>
-
+    </div>
+      </div>
     </div>
 
 <script>

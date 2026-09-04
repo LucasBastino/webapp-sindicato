@@ -3,11 +3,11 @@ package auth
 import (
 	"errors"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
-	"github.com/LucasBastino/app-sindicato/internal/features/user"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/user"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -33,7 +33,14 @@ func (ah *AuthHandler) RenderExpiredSession(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) RenderLogin(c *fiber.Ctx) error {
+	if h.service.HasValidSession(c) {
+		return c.Redirect("/")
+	}
 	return c.Render("user/login", LoginPageData{Errors: map[string]string{}})
+}
+
+func (h *AuthHandler) RenderForgotPassword(c *fiber.Ctx) error {
+	return c.Render("user/forgot_password", fiber.Map{})
 }
 
 func (h *AuthHandler) renderRegisterForm(c *fiber.Ctx, pageData user.PageData, status int) error {
@@ -131,24 +138,21 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 	refreshToken, accessToken, err := h.service.Login(ctx, username, password)
 	if err != nil {
-		errorMap := map[string]string{}
-		if errors.Is(err, apperrors.ErrInvalidLoginUser) {
-			errorMap["user"] = "Usuario incorrecto."
-		} else if errors.Is(err, apperrors.ErrInvalidLoginPassword) {
-			errorMap["password"] = "Contraseña incorrecta."
-		} else {
-			return err
+		if errors.Is(err, apperrors.ErrInvalidLogin) {
+			return c.Status(fiber.StatusUnauthorized).Render("user/login", LoginPageData{
+				Username: username,
+				Errors: map[string]string{
+					"user": "Usuario o contraseña incorrectos.",
+				},
+			})
 		}
-		return c.Status(fiber.StatusUnauthorized).Render("user/login", LoginPageData{
-			Username: username,
-			Errors:   errorMap,
-		})
+		return err
 	}
 
-	refreshCookie := createRefreshCookie(refreshToken, h.service.cfg.RefreshTokenTTL)
+	refreshCookie := createRefreshCookie(refreshToken, h.service.cfg.RefreshTokenTTL, h.service.cfg.CookieSecure)
 	c.Cookie(&refreshCookie)
 
-	accessCookie := createAccessCookie(accessToken, h.service.cfg.AccessTokenTTL)
+	accessCookie := createAccessCookie(accessToken, h.service.cfg.AccessTokenTTL, h.service.cfg.CookieSecure)
 	c.Cookie(&accessCookie)
 
 	return c.Redirect("/dashboard")
@@ -163,7 +167,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		h.logger.Error("logout continued after refresh token revoke failed", "err", err)
 	}
 
-	clearCookies(c)
+	clearCookies(c, h.service.cfg.CookieSecure)
 
 	return c.Redirect("/login")
 }

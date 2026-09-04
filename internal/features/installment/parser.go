@@ -3,8 +3,8 @@ package installment
 import (
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 func toModel(req request) (Installment, error) {

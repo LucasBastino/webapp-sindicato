@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 )
 
 type LicenseService struct {

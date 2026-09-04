@@ -1,6 +1,6 @@
 package user
 
-import "github.com/LucasBastino/app-sindicato/internal/common/page"
+import "github.com/LucasBastino/webapp-sindicato/internal/common/page"
 
 type PageData struct {
 	User        Response
@@ -33,8 +33,5 @@ func (d PermissionsModalData) Role(resource string) string {
 type PasswordModalData struct {
 	ID                     int
 	RequireCurrentPassword bool
-	CurrentPassword        string
-	Password               string
-	ConfirmPassword        string
 	Errors                 map[string]string
 }

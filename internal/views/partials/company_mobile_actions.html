@@ -1,0 +1,18 @@
+{{define "company-mobile-actions"}}
+<div class="company-ficha-mobile-actions">
+  <div class="company-actions-dropdown actions-dropdown" id="company-actions-dropdown">
+    <button type="button"
+            class="btn btn-outline company-actions-trigger actions-trigger"
+            id="company-actions-toggle"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-controls="company-actions-menu">
+      Acciones
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div class="actions-menu company-actions-menu" id="company-actions-menu" role="menu">
+      {{template "company-nav-actions-menu" .}}
+    </div>
+  </div>
+</div>
+{{end}}

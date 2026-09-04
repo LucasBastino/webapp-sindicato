@@ -3,18 +3,18 @@ package bootstrap
 import (
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/auth"
-	"github.com/LucasBastino/app-sindicato/internal/backup"
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/features/company"
-	"github.com/LucasBastino/app-sindicato/internal/features/installment"
-	"github.com/LucasBastino/app-sindicato/internal/features/member"
-	"github.com/LucasBastino/app-sindicato/internal/features/parent"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/features/paymentplan"
-	"github.com/LucasBastino/app-sindicato/internal/features/user"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
-	"github.com/LucasBastino/app-sindicato/internal/license"
+	"github.com/LucasBastino/webapp-sindicato/internal/auth"
+	"github.com/LucasBastino/webapp-sindicato/internal/backup"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/company"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/installment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/member"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/parent"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/paymentplan"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/user"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/license"
 )
 
 type services struct {
@@ -47,6 +47,7 @@ func buildServices(infra *infra, cfg config.Config) *services {
 
 	authRepo := auth.NewAuthRepository(infra.db)
 	authService := auth.NewAuthService(authRepo, userService, infra.hasher, infra.tokenGen, cfg.Auth)
+	userService.SetSessionRevoker(authService)
 
 	parentRepo := parent.NewParentRepository(infra.db)
 	parentService := parent.NewParentService(parentRepo, idempotencyService)

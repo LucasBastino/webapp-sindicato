@@ -1,8 +1,8 @@
 package pages
 
 import (
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
 	"github.com/gofiber/fiber/v2"
 )
 

@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Registrar Pago</title>
+  <title>Registrar Aporte</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body class="modal-page modal-form-modal">
@@ -22,13 +24,14 @@
 </html>
 
 {{define "payment-modal"}}
+<div class="modal-page modal-form-modal">
 <div class="modal-overlay show" id="payment-modal-overlay"
      onclick="if(event.target===this) document.getElementById('app-modal-container').innerHTML=''">
 
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
 
     <div class="modal-header">
-      <h3 id="payment-modal-title">{{if .Payment.IsInPaymentPlan}}Detalle de pago{{else if .Payment.IsPaid}}Editar pago{{else}}Registrar pago{{end}}</h3>
+      <h3 id="payment-modal-title">{{if .Payment.IsInPaymentPlan}}Detalle de aporte{{else if .Payment.IsPaid}}Editar aporte{{else}}Registrar aporte{{end}}</h3>
       <button class="modal-close" type="button" aria-label="Cerrar"
               onclick="document.getElementById('app-modal-container').innerHTML=''">
         <i data-lucide="x"></i>
@@ -36,9 +39,9 @@
     </div>
 
     <div class="modal-summary">
-      Mes: {{.Payment.MonthName}} {{.Payment.Year}}
+      {{.Payment.MonthName}} {{.Payment.Year}}
       {{if .Payment.Amount}} - <span class="money" data-amount="{{printf "%.2f" .Payment.Amount}}"></span>{{end}}
-      - <span class="{{if eq .Payment.Status "Vencido"}}status-red{{else if eq .Payment.Status "Completado"}}status-green{{else}}status-muted{{end}}">{{.Payment.Status}}</span>
+      - <span id="payment-modal-status" class="{{if eq .Payment.Status "Vencido"}}status-red{{else if eq .Payment.Status "Completado"}}status-green{{else if eq .Payment.Status "En plan de pago"}}status-yellow{{else}}status-muted{{end}}">{{.Payment.Status}}</span>
     </div>
 
     {{if .Payment.IsInPaymentPlan}}
@@ -47,103 +50,152 @@
       <span>Este mes está incluido en un plan de pago y no se puede editar.</span>
     </div>
     <div class="modal-form">
-      <div class="form-group">
-        <label for="amount">Monto a pagar</label>
-        <div class="input-wrapper has-currency">
-          <span class="currency-prefix">$</span>
-          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
+      <div class="form-group form-group--inline">
+        <label for="amount">Monto</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-currency">
+            <span class="currency-prefix">$</span>
+            <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
+          </div>
         </div>
       </div>
-      <div class="form-group">
+      {{if .Payment.IsPaid}}
+      <div class="form-group form-group--inline">
         <label for="paid-at">Fecha de pago</label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+        <div class="form-group-field">
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+          </div>
         </div>
       </div>
+      {{end}}
       <div class="form-group">
         <label for="observations">Observaciones</label>
         <div class="textarea-wrapper">
           <textarea id="observations" name="observations" maxlength="300" readonly>{{.Payment.Observations}}</textarea>
         </div>
+      </div>
+      <div class="entity-meta">
+        <i data-lucide="clock"></i>
+        <span>Actualizado: {{.Payment.UpdatedAt}}</span>
       </div>
       <button type="button" class="btn-submit" onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
     </div>
     {{else if not (.PageContext.UserAuthInfo.CanEdit "company")}}
     <div class="modal-form">
-      <div class="form-group">
-        <label for="amount">Monto a pagar</label>
-        <div class="input-wrapper has-currency">
-          <span class="currency-prefix">$</span>
-          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
+      <div class="form-group form-group--inline">
+        <label for="amount">Monto</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-currency">
+            <span class="currency-prefix">$</span>
+            <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}" readonly>
+          </div>
         </div>
       </div>
-      <div class="form-group">
+      {{if .Payment.IsPaid}}
+      <div class="form-group form-group--inline">
         <label for="paid-at">Fecha de pago</label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+        <div class="form-group-field">
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}" readonly>
+          </div>
         </div>
       </div>
+      {{end}}
       <div class="form-group">
         <label for="observations">Observaciones</label>
         <div class="textarea-wrapper">
           <textarea id="observations" name="observations" maxlength="300" readonly>{{.Payment.Observations}}</textarea>
         </div>
       </div>
+      <div class="entity-meta">
+        <i data-lucide="clock"></i>
+        <span>Actualizado: {{.Payment.UpdatedAt}}</span>
+      </div>
       <button type="button" class="btn-submit" onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
     </div>
     {{else}}
     <form class="modal-form" id="payment-form"
+          data-due-date="{{.Payment.DueDateRFC}}"
+          data-in-payment-plan="{{if .Payment.IsInPaymentPlan}}true{{else}}false{{end}}"
           hx-put="/payments/{{.Payment.ID}}"
           hx-target="#app-modal-container"
           hx-swap="innerHTML">
 
       <input type="hidden" id="is-paid" name="is_paid" value="{{if .Payment.IsPaid}}true{{else}}false{{end}}">
 
-      <div class="form-group{{if index .Errors "amount"}} input-invalid{{end}}">
-        <label for="amount">Monto a pagar <span class="required">*</span></label>
-        <div class="input-wrapper has-currency">
-          <span class="currency-prefix">$</span>
-          <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}">
+      <div class="form-group form-group--inline{{if index .Errors "amount"}} input-invalid{{end}}">
+        <label for="amount">Monto <span class="required">*</span></label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-currency">
+            <span class="currency-prefix">$</span>
+            <input type="text" id="amount" name="amount" value="{{if .Payment.Amount}}{{formatAmountInput .Payment.Amount}}{{end}}">
+          </div>
+          <p class="amount-error field-error">{{with index .Errors "amount"}}{{.}}{{end}}</p>
         </div>
-        <p class="amount-error field-error">{{with index .Errors "amount"}}{{.}}{{end}}</p>
-        <span class="helper-text">Debe pagarse el monto total del mes.</span>
       </div>
 
-      <div class="form-group{{if index .Errors "paidAt"}} input-invalid{{end}}">
+      <div class="form-group form-group--inline{{if index .Errors "paidAt"}} input-invalid{{end}}">
         <label for="paid-at">Fecha de pago</label>
-        <div class="paid-at-row">
-          <button type="button" id="toggle-paid-btn"
-                  class="{{if .Payment.IsPaid}}btn-unmark-payment{{else}}btn-mark-payment{{end}}"
-                  aria-pressed="{{if .Payment.IsPaid}}true{{else}}false{{end}}">
-            {{if .Payment.IsPaid}}Quitar fecha de pago{{else}}Registrar fecha de pago{{end}}
-          </button>
-          <div class="input-wrapper has-icon">
-            <span class="input-icon"><i data-lucide="calendar"></i></span>
-            <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}"
-                   placeholder="DD/MM/AAAA"
-                   {{if not .Payment.IsPaid}}disabled{{end}}>
+        <div class="form-group-field">
+          <div class="paid-at-row">
+            <div class="input-wrapper has-icon paid-at-input-wrap{{if not .Payment.IsPaid}} is-hidden{{end}}" id="paid-at-wrap">
+              <span class="input-icon"><i data-lucide="calendar"></i></span>
+              <input type="text" id="paid-at" name="paid-at" value="{{.Payment.PaidAt}}"
+                     readonly
+                     {{if not .Payment.IsPaid}}disabled{{end}}>
+            </div>
+            <button type="button" id="toggle-paid-btn"
+                    class="{{if .Payment.IsPaid}}btn-unmark-payment{{else}}btn-mark-payment{{end}}"
+                    aria-pressed="{{if .Payment.IsPaid}}true{{else}}false{{end}}">
+              {{if .Payment.IsPaid}}<i data-lucide="x-circle"></i> Cancelar pago{{else}}<i data-lucide="calendar-plus"></i> Registrar fecha{{end}}
+            </button>
           </div>
+          <p class="paid-at-error field-error">{{with index .Errors "paidAt"}}{{.}}{{end}}</p>
         </div>
-        <p class="paid-at-error field-error">{{with index .Errors "paidAt"}}{{.}}{{end}}</p>
       </div>
 
       <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
-        <label for="observations">Observaciones (opcional)</label>
         <div class="textarea-wrapper">
-          <textarea id="observations" name="observations" maxlength="300" placeholder="Agregá observaciones sobre este pago...">{{.Payment.Observations}}</textarea>
+          <textarea id="observations" name="observations" maxlength="300" placeholder="Observaciones (opcional)">{{.Payment.Observations}}</textarea>
         </div>
         <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
       </div>
 
-      <button type="submit" class="btn-submit">Guardar</button>
+      <div class="entity-meta">
+        <i data-lucide="clock"></i>
+        <span>Actualizado: {{.Payment.UpdatedAt}}</span>
+      </div>
+
+      <div class="modal-actions modal-actions--single">
+        <button class="btn btn-primary" id="btn-save" type="submit">
+          <i data-lucide="save"></i>
+          Guardar
+        </button>
+      </div>
     </form>
     {{end}}
 
   </div>
 </div>
+</div>
 
+<script type="module">
+  import { openDatePickerModal } from '/static/scripts/date-picker-modal.js';
+  import { validatePayment } from '/static/scripts/form-validation/payment.js';
+
+  window.openDatePickerModal = openDatePickerModal;
+
+  const form = document.getElementById('payment-form');
+  form?.addEventListener('submit', (e) => {
+    if (!validatePayment()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+</script>
 <script>
   lucide.createIcons();
   document.querySelectorAll('#payment-modal-overlay .money').forEach(function (el) {
@@ -153,6 +205,7 @@
   });
   document.addEventListener('keydown', function onPaymentEsc(e) {
     if (e.key === 'Escape') {
+      if (document.querySelector('.date-picker-overlay')) return;
       var container = document.getElementById('app-modal-container');
       if (container) container.innerHTML = '';
       document.removeEventListener('keydown', onPaymentEsc);
@@ -160,36 +213,95 @@
   });
 
   (function () {
+    var form = document.getElementById('payment-form');
     var isPaidInput = document.getElementById('is-paid');
     var paidAtInput = document.getElementById('paid-at');
+    var paidAtWrap = document.getElementById('paid-at-wrap');
     var toggleBtn = document.getElementById('toggle-paid-btn');
-    if (!isPaidInput || !paidAtInput || !toggleBtn) return;
+    if (!form || !isPaidInput || !paidAtInput || !toggleBtn) return;
+
+    var statusEl = document.getElementById('payment-modal-status');
+
+    function paymentStatusClass(status) {
+      switch (status) {
+        case 'Vencido':
+          return 'status-red';
+        case 'Completado':
+          return 'status-green';
+        case 'En plan de pago':
+          return 'status-yellow';
+        default:
+          return 'status-muted';
+      }
+    }
+
+    function computePaymentStatus(isPaid) {
+      if (form.dataset.inPaymentPlan === 'true') {
+        return 'En plan de pago';
+      }
+      if (isPaid) {
+        return 'Completado';
+      }
+      var dueRaw = form.dataset.dueDate;
+      if (dueRaw) {
+        var dueDate = new Date(dueRaw);
+        if (!Number.isNaN(dueDate.getTime()) && Date.now() > dueDate.getTime()) {
+          return 'Vencido';
+        }
+      }
+      return 'Pendiente';
+    }
+
+    function updateStatusBadge() {
+      if (!statusEl) return;
+      var status = computePaymentStatus(isPaidInput.value === 'true');
+      statusEl.textContent = status;
+      statusEl.className = paymentStatusClass(status);
+    }
 
     function setPaidState(paid) {
       isPaidInput.value = paid ? 'true' : 'false';
-      paidAtInput.disabled = !paid;
       if (!paid) {
         paidAtInput.value = '';
+        paidAtInput.disabled = true;
+        paidAtInput.setAttribute('readonly', 'readonly');
+        if (paidAtWrap) paidAtWrap.classList.add('is-hidden');
+      } else {
+        paidAtInput.disabled = false;
+        paidAtInput.setAttribute('readonly', 'readonly');
+        if (paidAtWrap) paidAtWrap.classList.remove('is-hidden');
       }
       toggleBtn.className = paid ? 'btn-unmark-payment' : 'btn-mark-payment';
-      toggleBtn.textContent = paid ? 'Quitar fecha de pago' : 'Registrar fecha de pago';
+      toggleBtn.innerHTML = paid
+        ? '<i data-lucide="x-circle"></i> Cancelar pago'
+        : '<i data-lucide="calendar-plus"></i> Registrar fecha';
       toggleBtn.setAttribute('aria-pressed', paid ? 'true' : 'false');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ nodes: [toggleBtn] });
+      }
+      updateStatusBadge();
+    }
+
+    function openPaidAtPicker() {
+      window.openDatePickerModal({
+        title: 'Fecha de pago',
+        initialValue: paidAtInput.value,
+        onConfirm: function (date) {
+          paidAtInput.value = date;
+          setPaidState(true);
+        }
+      });
     }
 
     toggleBtn.addEventListener('click', function () {
-      setPaidState(isPaidInput.value !== 'true');
+      if (isPaidInput.value === 'true') {
+        setPaidState(false);
+      } else {
+        openPaidAtPicker();
+      }
     });
-  })();
-</script>
-<script type="module">
-  import { validatePayment } from '/static/scripts/form-validation/payment.js';
 
-  const form = document.getElementById('payment-form');
-  form?.addEventListener('submit', (e) => {
-    if (!validatePayment()) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, true);
+    setPaidState(isPaidInput.value === 'true');
+  })();
 </script>
 {{end}}

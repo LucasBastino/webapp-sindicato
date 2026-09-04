@@ -1,5 +1,5 @@
 import * as v from "./validators.js";
-import { validateForm, getInputValue, showError } from "./common.js";
+import { validateForm } from "./common.js";
 
 export function validateUser() {
     const fields = {
@@ -28,17 +28,5 @@ export function validateChangePassword() {
     fields.password = { id: "password", validate: v.validatePassword };
     fields.confirmPassword = { id: "confirm-password", validate: v.validateConfirmPassword };
 
-    let ok = validateForm(fields);
-
-    const password = (getInputValue("password") || "").trim();
-    const confirm = (getInputValue("confirm-password") || "").trim();
-    const current = (getInputValue("current-password") || "").trim();
-
-    if (ok && password !== confirm) {
-        showError("confirm-password", "Las contraseñas no coinciden.");
-        showError("password", "Las contraseñas no coinciden.");
-        ok = false;
-    }
-
-    return ok;
+    return validateForm(fields);
 }

@@ -1,14 +1,15 @@
 package paymentplan
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -31,6 +32,17 @@ func NewPaymentPlanHandler(service *PaymentPlanService) *PaymentPlanHandler {
 	}
 }
 
+func (h *PaymentPlanHandler) buildCompanyNav(ctx context.Context, companyID int, companyName, active string, canViewMembers bool) (page.CompanyNav, error) {
+	name, number, address, phone, err := h.service.GetCompanySidebar(ctx, companyID)
+	if err != nil {
+		return page.CompanyNav{}, err
+	}
+	if companyName != "" {
+		name = companyName
+	}
+	return page.NewCompanyNav(companyID, name, active, canViewMembers).WithDetails(number, address, phone), nil
+}
+
 func (h *PaymentPlanHandler) RenderOverview(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -39,7 +51,8 @@ func (h *PaymentPlanHandler) RenderOverview(c *fiber.Ctx) error {
 		return err
 	}
 
-	groups, err := h.service.ListAllGrouped(ctx)
+	showCompleted := c.Query("show-completed") == "true"
+	groups, err := h.service.ListAllGrouped(ctx, showCompleted)
 	if err != nil {
 		return err
 	}
@@ -49,14 +62,19 @@ func (h *PaymentPlanHandler) RenderOverview(c *fiber.Ctx) error {
 		ActiveSection: "reports",
 	}
 	data := overviewPageData{
-		Groups:      groups,
-		PageContext: pageContext,
+		Groups:        groups,
+		PageContext:   pageContext,
+		ShowCompleted: showCompleted,
 	}
 	if len(groups) == 0 {
+		description := "No hay planes de pago pendientes para mostrar."
+		if showCompleted {
+			description = "No hay planes de pago pendientes ni completados para mostrar."
+		}
 		data.EmptyState = page.EmptyState{
 			Icon:        "credit-card",
 			Title:       "No hay planes de pago",
-			Description: "No hay planes de pago para mostrar.",
+			Description: description,
 		}
 	}
 
@@ -95,9 +113,16 @@ func (h *PaymentPlanHandler) renderPageByID(c *fiber.Ctx, id int) error {
 		ActiveSection: "companies",
 	}
 
+	companyNav, err := h.buildCompanyNav(ctx, detail.CompanyID, detail.CompanyName, "plans", userAuthInfo.CanView("member"))
+	if err != nil {
+		return err
+	}
+
 	pageData := pageData{
 		PaymentPlan: res,
 		CompanyID:   detail.CompanyID,
+		CompanyName: detail.CompanyName,
+		CompanyNav:  companyNav,
 		PageContext: pageContext,
 	}
 	if c.Get("HX-Request") == "true" {
@@ -165,6 +190,13 @@ func (h *PaymentPlanHandler) renderTableByID(c *fiber.Ctx, companyID int) error 
 		PageContext:  pageContext,
 	}
 
+	companyNav, err := h.buildCompanyNav(ctx, companyID, "", "plans", userAuthInfo.CanView("member"))
+	if err != nil {
+		return err
+	}
+	tablePageData.CompanyName = companyNav.CompanyName
+	tablePageData.CompanyNav = companyNav
+
 	if c.Get("HX-Request") == "true" {
 		return c.Render("payment-plans-content", tablePageData)
 	}
@@ -194,10 +226,17 @@ func (h *PaymentPlanHandler) RenderAddForm(c *fiber.Ctx) error {
 		ActiveSection: "companies",
 	}
 
+	companyNav, err := h.buildCompanyNav(ctx, companyID, "", "plans", userAuthInfo.CanView("member"))
+	if err != nil {
+		return err
+	}
+
 	pageData := pageData{
 		PaymentPlan:     response{SelectedPaymentIDs: map[int]bool{}},
 		OverduePayments: toOverdueOptions(overdue),
 		CompanyID:       companyID,
+		CompanyName:     companyNav.CompanyName,
+		CompanyNav:      companyNav,
 		PageContext:     pageContext,
 	}
 
@@ -243,6 +282,10 @@ func (h *PaymentPlanHandler) Create(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
+		companyNav, err := h.buildCompanyNav(ctx, companyID, "", "plans", userAuthInfo.CanView("member"))
+		if err != nil {
+			return err
+		}
 		pageContext := page.PageContext{
 			UserAuthInfo:  userAuthInfo,
 			Mode:          "add",
@@ -252,6 +295,8 @@ func (h *PaymentPlanHandler) Create(c *fiber.Ctx) error {
 			PaymentPlan:     res,
 			OverduePayments: toOverdueOptions(overdue),
 			CompanyID:       companyID,
+			CompanyName:     companyNav.CompanyName,
+			CompanyNav:      companyNav,
 			PageContext:     pageContext,
 			Errors:          errorMap,
 		}
@@ -287,6 +332,10 @@ func (h *PaymentPlanHandler) Create(c *fiber.Ctx) error {
 		if listErr != nil {
 			return listErr
 		}
+		companyNav, navErr := h.buildCompanyNav(ctx, companyID, "", "plans", userAuthInfo.CanView("member"))
+		if navErr != nil {
+			return navErr
+		}
 		pageContext := page.PageContext{
 			UserAuthInfo:  userAuthInfo,
 			Mode:          "add",
@@ -296,6 +345,8 @@ func (h *PaymentPlanHandler) Create(c *fiber.Ctx) error {
 			PaymentPlan:     res,
 			OverduePayments: toOverdueOptions(overdue),
 			CompanyID:       companyID,
+			CompanyName:     companyNav.CompanyName,
+			CompanyNav:      companyNav,
 			PageContext:     pageContext,
 			Errors:          map[string]string{},
 		}
@@ -357,9 +408,15 @@ func (h *PaymentPlanHandler) Update(c *fiber.Ctx) error {
 			UserAuthInfo:  userAuthInfo,
 			ActiveSection: "companies",
 		}
+		companyNav, navErr := h.buildCompanyNav(ctx, detail.CompanyID, detail.CompanyName, "plans", userAuthInfo.CanView("member"))
+		if navErr != nil {
+			return navErr
+		}
 		pageData := pageData{
 			PaymentPlan: res,
 			CompanyID:   detail.CompanyID,
+			CompanyName: detail.CompanyName,
+			CompanyNav:  companyNav,
 			PageContext: pageContext,
 			Errors:      errorMap,
 		}
@@ -415,7 +472,7 @@ func (h *PaymentPlanHandler) Restore(c *fiber.Ctx) error {
 		if errors.As(err, &appErr) && appErr.Type == "business" && c.Get("HX-Request") == "true" {
 			c.Set("HX-Retarget", "#app-modal-container")
 			c.Set("HX-Reswap", "innerHTML")
-			return c.Status(fiber.StatusOK).Render("error/error_modal", fiber.Map{
+			return c.Status(fiber.StatusOK).Render("error-modal", fiber.Map{
 				"errorMsg": appErr.ClientMsg,
 			})
 		}

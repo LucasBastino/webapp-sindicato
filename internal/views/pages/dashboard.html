@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -51,8 +53,10 @@
           <i data-lucide="users"></i>
         </div>
         <div class="stat-content">
-          <span>Afiliados totales</span>
-          <h2>{{.Summary.ActiveMembers}}</h2>
+          <div class="stat-content-top">
+            <span>Afiliados totales</span>
+            <h2>{{.Summary.ActiveMembers}}</h2>
+          </div>
           {{if .PageContext.UserAuthInfo.CanEdit "member"}}
           <a href="/members/new"
              class="stat-card-action"
@@ -79,8 +83,10 @@
           <i data-lucide="building-2"></i>
         </div>
         <div class="stat-content">
-          <span>Empresas activas</span>
-          <h2>{{.Summary.ActiveCompanies}}</h2>
+          <div class="stat-content-top">
+            <span>Empresas activas</span>
+            <h2>{{.Summary.ActiveCompanies}}</h2>
+          </div>
           {{if .PageContext.UserAuthInfo.CanEdit "company"}}
           <a href="/companies/new"
              class="stat-card-action"
@@ -105,9 +111,14 @@
           <i data-lucide="alert-triangle"></i>
         </div>
         <div class="stat-content">
-          <span>Pagos vencidos</span>
-          <h2>{{.Summary.OverduePaymentsCount}}</h2>
-          <div class="negative money" data-amount="{{printf "%.2f" .Summary.OverduePaymentsAmount}}"></div>
+          <div class="stat-content-top">
+            <span>Aportes vencidos</span>
+            <h2>{{.Summary.OverduePaymentsCount}}</h2>
+          </div>
+          <div class="stat-overdue-total">
+            <span class="stat-overdue-label">Total:</span>
+            <span class="negative money" data-amount="{{printf "%.2f" .Summary.OverduePaymentsAmount}}"></span>
+          </div>
         </div>
       </div>
       {{end}}
@@ -121,8 +132,10 @@
           <i data-lucide="credit-card"></i>
         </div>
         <div class="stat-content">
-          <span>Planes de pago</span>
-          <h2>{{.Summary.PaymentPlansCount}}</h2>
+          <div class="stat-content-top">
+            <span>Planes de pago</span>
+            <h2>{{.Summary.PaymentPlansCount}}</h2>
+          </div>
         </div>
       </div>
       {{end}}
@@ -133,12 +146,8 @@
 
       {{if .PageContext.UserAuthInfo.CanView "member"}}
       <div class="card">
-        <div class="card-header">
+        <div class="card-header dashboard-list-header">
           <h3>Últimos afiliados</h3>
-          <a href="/members"
-             hx-get="/members"
-             hx-target="#main-content"
-             hx-push-url="true">Ver todos</a>
         </div>
         <div class="list">
           {{if eq (len .Summary.RecentMembers) 0}}
@@ -168,12 +177,8 @@
 
       {{if .PageContext.UserAuthInfo.CanView "company"}}
       <div class="card">
-        <div class="card-header">
+        <div class="card-header dashboard-list-header">
           <h3>Empresas recientes</h3>
-          <a href="/companies"
-             hx-get="/companies"
-             hx-target="#main-content"
-             hx-push-url="true">Ver todas</a>
         </div>
         <div class="list">
           {{if eq (len .Summary.RecentCompanies) 0}}

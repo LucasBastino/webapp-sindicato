@@ -2,21 +2,24 @@ package parent
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	pu "github.com/LucasBastino/webapp-sindicato/internal/common/utils/parser"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 
 func toModel(req request) (Parent, error) {
-	// ya esta validado, no hace falta chequear el error
-	birthdayTime, err := v.ParseDMY(req.Birthday)
-	if err!=nil{
-		return Parent{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse birthday: %w", err), "")
+	var birthdayTime time.Time
+	if req.Birthday != "" {
+		parsed, err := v.ParseDMY(req.Birthday)
+		if err != nil {
+			return Parent{}, apperrors.NewBadRequestError(fmt.Errorf("failed to parse birthday: %w", err), "")
+		}
+		birthdayTime = parsed
 	}
-	
-	// chequeo el *string por si es nil
+
 	cuil := pu.StrOrEmpty(req.Cuil)
 
 	return Parent{
@@ -49,14 +52,17 @@ func mergetoResponse(p Parent, req request) (response, error) {
 
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
 	cuil := pu.StrOrDBNull(p.Cuil)
-	// de esta manera, puede compararse con un string vacio del request, sino no son del mismo tipo y por lo tanto, no son comparables
-	
+	dbBirthday := ""
+	if !p.Birthday.IsZero() {
+		dbBirthday = p.Birthday.Format("02/01/2006")
+	}
+
 	return response{
 		ID:           p.ID,
 		Name:         pu.MergeField(p.Name, req.Name),
 		LastName:     pu.MergeField(p.LastName, req.LastName),
 		Relationship: pu.MergeField(p.Relationship, req.Relationship),
-		Birthday:     pu.MergeField(p.Birthday.Format("02/01/2006"), req.Birthday),
+		Birthday:     pu.MergeField(dbBirthday, req.Birthday),
 		Gender:       pu.MergeField(p.Gender, req.Gender),
 		Cuil:         pu.MergeField(cuil, req.Cuil),
 		Observations: pu.MergeField(p.Observations, req.Observations),
@@ -67,13 +73,17 @@ func toResponse(p Parent) response {
 
 	// chequeo si el campo del registro obtenido de la db contienen un valor o si es null
 	cuil := pu.StrOrDBNull(p.Cuil)
+	birthday := ""
+	if !p.Birthday.IsZero() {
+		birthday = p.Birthday.Format("02/01/2006")
+	}
 
 	return response{
 		ID:           p.ID,
 		Name:         p.Name,
 		LastName:     p.LastName,
 		Relationship: p.Relationship,
-		Birthday:     p.Birthday.Format("02/01/2006"),
+		Birthday:     birthday,
 		Gender:       p.Gender,
 		Cuil:         cuil,
 		Observations: p.Observations,

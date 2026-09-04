@@ -3,9 +3,9 @@ package installment
 import (
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -111,8 +111,7 @@ func (h *InstallmentHandler) Update(c *fiber.Ctx) error {
 		return err
 	}
 
-	c.Set("HX-Retarget", "#app-modal-container")
-	c.Set("HX-Reswap", "innerHTML")
-	c.Set("HX-Trigger", "paymentPlanUpdated")
+	// Close modal first; refresh the payment plan view after settle.
+	c.Set("HX-Trigger-After-Settle", "paymentPlanUpdated")
 	return c.SendString("")
 }

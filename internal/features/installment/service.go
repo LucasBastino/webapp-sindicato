@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/jmoiron/sqlx"
 )
 

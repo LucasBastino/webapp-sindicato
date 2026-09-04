@@ -1,25 +1,23 @@
 package bootstrap
 
 import (
-	"github.com/LucasBastino/app-sindicato/internal/auth"
-	"github.com/LucasBastino/app-sindicato/internal/backup"
-	"github.com/LucasBastino/app-sindicato/internal/features/company"
-	"github.com/LucasBastino/app-sindicato/internal/features/installment"
-	"github.com/LucasBastino/app-sindicato/internal/features/member"
-	"github.com/LucasBastino/app-sindicato/internal/features/parent"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/features/paymentplan"
-	"github.com/LucasBastino/app-sindicato/internal/features/user"
-	"github.com/LucasBastino/app-sindicato/internal/http/pages"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
-	"github.com/LucasBastino/app-sindicato/internal/license"
+	"github.com/LucasBastino/webapp-sindicato/internal/auth"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/company"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/installment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/member"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/parent"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/paymentplan"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/user"
+	"github.com/LucasBastino/webapp-sindicato/internal/http/pages"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/license"
 )
 
 
 type httpComponents struct {
 	auth       	*authModule
 	license		*license.LicenseHandler
-	backUp      *backup.BackUpHandler
 	idempotency *idempotency.IdempotencyMiddleware
 	pages		*pages.PagesHandler
 
@@ -49,13 +47,13 @@ type authModule struct {
 // }
 
 
-func buildHTTPComponents(services *services, app *infra) *httpComponents{
+func buildHTTPComponents(services *services, app *infra, cookieSecure bool) *httpComponents{
 	
 	authMiddleware := auth.NewAuthMiddleware(services.auth, services.license)
 	authHandler := auth.NewAuthHandler(services.auth, app.logger)
 	licenseHandler := license.NewLicenseHandler(services.license)
 
-	userHandler := user.NewUserHandler(services.user)
+	userHandler := user.NewUserHandler(services.user, cookieSecure)
 
 	companyHandler := company.NewCompanyHandler(services.company, app.normalizer)
 	memberHandler := member.NewMemberHandler(services.member, services.company, app.normalizer)
@@ -65,7 +63,6 @@ func buildHTTPComponents(services *services, app *infra) *httpComponents{
 	paymentPlanHandler := paymentplan.NewPaymentPlanHandler(services.paymentPlan)
 	installmentHandler := installment.NewInstallmentHandler(services.installment)
 	
-	backUpHandler := backup.NewBackUpHandler(services.backUp, app.logger)
 	dashboardService := pages.NewDashboardService(services.member, services.company, services.payment, services.paymentPlan)
 	pagesHandler := pages.NewPagesHandler(dashboardService)
 
@@ -91,7 +88,6 @@ func buildHTTPComponents(services *services, app *infra) *httpComponents{
 		paymentPlan: paymentPlanHandler,
 		installment: installmentHandler,
 
-		backUp: backUpHandler,
 		pages:  pagesHandler,
 
 		idempotency: idempotencyMiddleware,

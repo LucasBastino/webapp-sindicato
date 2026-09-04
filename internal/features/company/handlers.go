@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -49,7 +49,7 @@ func (h *CompanyHandler) renderPageByID(c *fiber.Ctx, id int) error{
 	}
 
 	res := toResponse(*company)
-	
+
 	pageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "edit", ActiveSection: "companies"}
 	pageData := pageData{
 		Company:          res,
@@ -57,10 +57,7 @@ func (h *CompanyHandler) renderPageByID(c *fiber.Ctx, id int) error{
 		WithPaymentTable: false,
 	}
 
-	if c.Get("HX-Request") == "true" {
-		return c.Render("company-content", pageData)
-	}
-	return c.Render("company/company", pageData)
+	return h.renderCompanyPage(c, pageData, 0)
 }
 
 func (h *CompanyHandler) RenderTable(c *fiber.Ctx) error {
@@ -172,6 +169,19 @@ func (h *CompanyHandler) RenderAddForm(c *fiber.Ctx) error {
 }
 
 func (h *CompanyHandler) renderCompanyPage(c *fiber.Ctx, pageData pageData, status int) error {
+	if pageData.PageContext.Mode != "add" && pageData.Company.ID != 0 {
+		nav := page.NewCompanyNav(
+			pageData.Company.ID,
+			pageData.Company.Name,
+			"ficha",
+			pageData.PageContext.UserAuthInfo.CanView("member"),
+		).WithDetails(
+			pageData.Company.CompanyNumber,
+			pageData.Company.Address,
+			pageData.Company.Phone,
+		)
+		pageData.CompanyNav = nav
+	}
 	if status != 0 {
 		c.Status(status)
 	}
@@ -303,10 +313,10 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 			return err
 		}
 		res := mergetoResponse(*company, req)
-		
+
 		pageContext := page.PageContext{
-			UserAuthInfo: userAuthInfo,
-			Mode:         "edit",
+			UserAuthInfo:  userAuthInfo,
+			Mode:          "edit",
 			ActiveSection: "companies",
 		}
 		pageData := pageData{
@@ -315,7 +325,11 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 			Errors:      errorMap,
 		}
 
-		return h.renderCompanyPage(c, pageData, fiber.StatusBadRequest)
+		status := fiber.StatusBadRequest
+		if c.Get("HX-Request") == "true" {
+			status = fiber.StatusOK
+		}
+		return h.renderCompanyPage(c, pageData, status)
 	}
 
 	company := toModel(req)
@@ -326,8 +340,8 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 		if len(errorMap) > 0 {
 			res := toResponseFromRequest(req)
 			pageContext := page.PageContext{
-				UserAuthInfo: userAuthInfo,
-				Mode:         "edit",
+				UserAuthInfo:  userAuthInfo,
+				Mode:          "edit",
 				ActiveSection: "companies",
 			}
 			pageData := pageData{
@@ -336,7 +350,11 @@ func (h *CompanyHandler) Update(c *fiber.Ctx) error {
 				Errors:      errorMap,
 			}
 
-			return h.renderCompanyPage(c, pageData, fiber.StatusConflict)
+			status := fiber.StatusConflict
+			if c.Get("HX-Request") == "true" {
+				status = fiber.StatusOK
+			}
+			return h.renderCompanyPage(c, pageData, status)
 		}
 		return err
 	}	

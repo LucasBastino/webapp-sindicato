@@ -22,7 +22,7 @@ const logDir = "./logs"
 func NewSlogLogger() (*SlogLogger, error) {
 	fileName := fmt.Sprintf("%s/app-%s.log", logDir, time.Now().Format("2006-01-02"))
 
-	logFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err!=nil{
 		return nil, fmt.Errorf("failed to open app.log file: %w", err)
 	}

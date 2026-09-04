@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -41,13 +43,6 @@
         <p class="electoral-padron-subtitle">Listado de afiliados habilitados.</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" type="button"
-                hx-get="/reports"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Reportes
-        </button>
         {{if ne (len .Members) 0}}
         <button type="button" class="btn btn-print-padron" onclick="window.print()">
           <i data-lucide="printer"></i>
@@ -80,6 +75,26 @@
             {{end}}
           </tbody>
         </table>
+      </div>
+
+      <div class="mobile-cards">
+        {{range .Members}}
+        <article class="mobile-card">
+          <div class="mobile-card-title">{{.LastName}}, {{.Name}}</div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-fields">
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">DNI</span>
+                <span class="mobile-card-value">{{.Dni}}</span>
+              </div>
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Empresa</span>
+                <span class="mobile-card-value">{{.CompanyName}}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+        {{end}}
       </div>
 
       <div class="table-wrapper electoral-table--print">

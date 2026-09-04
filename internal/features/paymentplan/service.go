@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/features/installment"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/installment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -54,6 +54,22 @@ func (s *PaymentPlanService) Get(ctx context.Context, id int) (*PaymentPlan, []i
 		return nil, nil, apperrors.NewDatabaseError(err, "")
 	}
 	return paymentPlan, installments, nil
+}
+
+func (s *PaymentPlanService) GetCompanyName(ctx context.Context, companyID int) (string, error) {
+	name, err := s.repo.GetCompanyName(ctx, companyID)
+	if err != nil {
+		return "", apperrors.NewDatabaseError(err, "")
+	}
+	return name, nil
+}
+
+func (s *PaymentPlanService) GetCompanySidebar(ctx context.Context, companyID int) (name, number, address, phone string, err error) {
+	row, err := s.repo.GetCompanySidebar(ctx, companyID)
+	if err != nil {
+		return "", "", "", "", apperrors.NewDatabaseError(err, "")
+	}
+	return row.Name, row.CompanyNumber, row.Address, row.Phone, nil
 }
 
 func (s *PaymentPlanService) GetDetail(ctx context.Context, id int) (*PaymentPlanDetail, error) {
@@ -110,8 +126,8 @@ func (s *PaymentPlanService) CountAll(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (s *PaymentPlanService) ListAllGrouped(ctx context.Context) ([]PlanCompanyGroup, error) {
-	rows, err := s.repo.FindAllWithCompany(ctx)
+func (s *PaymentPlanService) ListAllGrouped(ctx context.Context, includeCompleted bool) ([]PlanCompanyGroup, error) {
+	rows, err := s.repo.FindAllWithCompany(ctx, includeCompleted)
 	if err != nil {
 		return nil, apperrors.NewDatabaseError(err, "")
 	}
@@ -181,7 +197,7 @@ type CreateInput struct {
 
 func (s *PaymentPlanService) Create(ctx context.Context, input CreateInput, idempotencyKey string) (int, error) {
 	if len(input.PaymentIDs) == 0 {
-		return 0, apperrors.NewBusinessError(errors.New("no payments selected"), "Debés seleccionar al menos un pago vencido.")
+		return 0, apperrors.NewBusinessError(errors.New("no payments selected"), "Debés seleccionar al menos un aporte vencido.")
 	}
 	if input.NumberOfInstallments < 1 {
 		return 0, apperrors.NewBusinessError(errors.New("invalid installments"), "La cantidad de cuotas no es válida.")
@@ -195,16 +211,16 @@ func (s *PaymentPlanService) Create(ctx context.Context, input CreateInput, idem
 		return 0, apperrors.NewDatabaseError(err, "")
 	}
 	if len(selected) != len(input.PaymentIDs) {
-		return 0, apperrors.NewBusinessError(errors.New("some payments not found"), "Algunos pagos seleccionados no existen.")
+		return 0, apperrors.NewBusinessError(errors.New("some payments not found"), "Algunos aportes seleccionados no existen.")
 	}
 
 	idStrs := make([]string, 0, len(selected))
 	for _, p := range selected {
 		if p.CompanyID != input.CompanyID {
-			return 0, apperrors.NewBusinessError(errors.New("payment company mismatch"), "Los pagos deben pertenecer a la misma empresa.")
+			return 0, apperrors.NewBusinessError(errors.New("payment company mismatch"), "Los aportes deben pertenecer a la misma empresa.")
 		}
 		if p.PaidAt != nil || p.IsInPaymentPlan || !time.Now().After(p.DueDate) {
-			return 0, apperrors.NewBusinessError(errors.New("payment not eligible"), "Solo se pueden incluir pagos vencidos disponibles.")
+			return 0, apperrors.NewBusinessError(errors.New("payment not eligible"), "Solo se pueden incluir aportes vencidos disponibles.")
 		}
 		idStrs = append(idStrs, strconv.Itoa(p.ID))
 	}
@@ -386,7 +402,7 @@ func (s *PaymentPlanService) Restore(ctx context.Context, id int) error {
 	if len(payments) != len(ids) {
 		return apperrors.NewBusinessError(
 			errors.New("payments not restorable"),
-			"No se puede restaurar el plan: algún pago del plan ya no existe.",
+			"No se puede restaurar el plan: algún aporte del plan ya no existe.",
 		)
 	}
 	now := time.Now()
@@ -394,7 +410,7 @@ func (s *PaymentPlanService) Restore(ctx context.Context, id int) error {
 		if p.PaidAt != nil || p.IsInPaymentPlan || !now.After(p.DueDate) {
 			return apperrors.NewBusinessError(
 				errors.New("payments not restorable"),
-				"No se puede restaurar el plan: todos los pagos incluidos deben seguir vencidos y fuera de otro plan.",
+				"No se puede restaurar el plan: todos los aportes incluidos deben seguir vencidos y fuera de otro plan.",
 			)
 		}
 	}

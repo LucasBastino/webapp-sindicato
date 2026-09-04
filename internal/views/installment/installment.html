@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body class="modal-page modal-form-modal">
@@ -38,7 +40,6 @@
 
     <div class="modal-summary">
       Cuota {{.Installment.InstallmentNumber}}
-      - <span class="money" data-amount="{{printf "%.2f" .Installment.Amount}}"></span>
       - <span class="{{if eq .Installment.Status "Vencido"}}status-red{{else if eq .Installment.Status "Completado"}}status-green{{else}}status-muted{{end}}">
         {{if eq .Installment.Status "Completado"}}Pagada{{else if eq .Installment.Status "Vencido"}}Vencida{{else}}{{.Installment.Status}}{{end}}
       </span>
@@ -49,32 +50,44 @@
       {{if .PlanCancelled}}
       <p class="helper-text" style="margin-bottom:16px;">Este plan está cancelado. Restaurá el plan para editar cuotas.</p>
       {{end}}
-      <div class="form-group">
-        <label for="amount">Monto a pagar</label>
-        <div class="input-wrapper has-currency">
-          <span class="currency-prefix">$</span>
-          <input type="text" id="amount" name="amount" value="{{formatAmountInput .Installment.Amount}}" readonly>
+      <div class="form-group form-group--inline">
+        <label for="amount">Monto</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-currency">
+            <span class="currency-prefix">$</span>
+            <input type="text" id="amount" name="amount" value="{{formatAmountInput .Installment.Amount}}" readonly>
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label for="due-date">Fecha de vencimiento</label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="due-date" name="due-date" value="{{.Installment.DueDate}}" readonly>
+      <div class="form-group form-group--inline">
+        <label for="due-date">Fecha de<br>vencimiento</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="due-date" name="due-date" value="{{.Installment.DueDate}}" readonly>
+          </div>
         </div>
       </div>
-      <div class="form-group">
+      {{if .Installment.IsPaid}}
+      <div class="form-group form-group--inline">
         <label for="paid-at">Fecha de pago</label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="paid-at" name="paid-at" value="{{.Installment.PaidAt}}" readonly>
+        <div class="form-group-field">
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="paid-at" name="paid-at" value="{{.Installment.PaidAt}}" readonly>
+          </div>
         </div>
       </div>
+      {{end}}
       <div class="form-group">
         <label for="observations">Observaciones</label>
         <div class="textarea-wrapper">
           <textarea id="observations" name="observations" maxlength="300" readonly>{{.Installment.Observations}}</textarea>
         </div>
+      </div>
+      <div class="entity-meta">
+        <i data-lucide="clock"></i>
+        <span>Actualizado: {{.Installment.UpdatedAt}}</span>
       </div>
       <button type="button" class="btn-submit" onclick="document.getElementById('app-modal-container').innerHTML=''">Cerrar</button>
     </div>
@@ -86,50 +99,64 @@
 
       <input type="hidden" id="is-paid" name="is_paid" value="{{if .Installment.IsPaid}}true{{else}}false{{end}}">
 
-      <div class="form-group">
-        <label for="amount">Monto a pagar</label>
-        <div class="input-wrapper has-currency">
-          <span class="currency-prefix">$</span>
-          <input type="text" id="amount" name="amount" value="{{formatAmountInput .Installment.Amount}}" readonly>
-        </div>
-        <span class="helper-text">El monto de la cuota no se puede modificar.</span>
-      </div>
-
-      <div class="form-group">
-        <label for="due-date">Fecha de vencimiento</label>
-        <div class="input-wrapper has-icon">
-          <span class="input-icon"><i data-lucide="calendar"></i></span>
-          <input type="text" id="due-date" name="due-date" value="{{.Installment.DueDate}}" readonly>
-        </div>
-      </div>
-
-      <div class="form-group{{if index .Errors "paidAt"}} input-invalid{{end}}">
-        <label for="paid-at">Fecha de pago</label>
-        <div class="paid-at-row">
-          <button type="button" id="toggle-paid-btn"
-                  class="{{if .Installment.IsPaid}}btn-unmark-payment{{else}}btn-mark-payment{{end}}"
-                  aria-pressed="{{if .Installment.IsPaid}}true{{else}}false{{end}}">
-            {{if .Installment.IsPaid}}Quitar fecha de pago{{else}}Registrar fecha de pago{{end}}
-          </button>
-          <div class="input-wrapper has-icon">
-            <span class="input-icon"><i data-lucide="calendar"></i></span>
-            <input type="text" id="paid-at" name="paid-at" value="{{.Installment.PaidAt}}"
-                   placeholder="DD/MM/AAAA"
-                   {{if not .Installment.IsPaid}}disabled{{end}}>
+      <div class="form-group form-group--inline">
+        <label for="amount">Monto</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-currency">
+            <span class="currency-prefix">$</span>
+            <input type="text" id="amount" name="amount" value="{{formatAmountInput .Installment.Amount}}" readonly>
           </div>
         </div>
-        <p class="paid-at-error field-error">{{with index .Errors "paidAt"}}{{.}}{{end}}</p>
+      </div>
+
+      <div class="form-group form-group--inline">
+        <label for="due-date">Fecha de<br>vencimiento</label>
+        <div class="form-group-field">
+          <div class="input-wrapper has-icon">
+            <span class="input-icon"><i data-lucide="calendar"></i></span>
+            <input type="text" id="due-date" name="due-date" value="{{.Installment.DueDate}}" readonly>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group form-group--inline{{if index .Errors "paidAt"}} input-invalid{{end}}">
+        <label for="paid-at">Fecha de pago</label>
+        <div class="form-group-field">
+          <div class="paid-at-row">
+            <div class="input-wrapper has-icon paid-at-input-wrap{{if not .Installment.IsPaid}} is-hidden{{end}}" id="paid-at-wrap">
+              <span class="input-icon"><i data-lucide="calendar"></i></span>
+              <input type="text" id="paid-at" name="paid-at" value="{{.Installment.PaidAt}}"
+                     readonly
+                     {{if not .Installment.IsPaid}}disabled{{end}}>
+            </div>
+            <button type="button" id="toggle-paid-btn"
+                    class="{{if .Installment.IsPaid}}btn-unmark-payment{{else}}btn-mark-payment{{end}}"
+                    aria-pressed="{{if .Installment.IsPaid}}true{{else}}false{{end}}">
+              {{if .Installment.IsPaid}}<i data-lucide="x-circle"></i> Cancelar pago{{else}}<i data-lucide="calendar-plus"></i> Registrar fecha{{end}}
+            </button>
+          </div>
+          <p class="paid-at-error field-error">{{with index .Errors "paidAt"}}{{.}}{{end}}</p>
+        </div>
       </div>
 
       <div class="form-group{{if index .Errors "observations"}} input-invalid{{end}}">
-        <label for="observations">Observaciones (opcional)</label>
         <div class="textarea-wrapper">
-          <textarea id="observations" name="observations" maxlength="300" placeholder="Agregá observaciones sobre esta cuota...">{{.Installment.Observations}}</textarea>
+          <textarea id="observations" name="observations" maxlength="300" placeholder="Observaciones (opcional)">{{.Installment.Observations}}</textarea>
         </div>
         <p class="observations-error field-error">{{with index .Errors "observations"}}{{.}}{{end}}</p>
       </div>
 
-      <button type="submit" class="btn-submit">Guardar</button>
+      <div class="entity-meta">
+        <i data-lucide="clock"></i>
+        <span>Actualizado: {{.Installment.UpdatedAt}}</span>
+      </div>
+
+      <div class="modal-actions modal-actions--single">
+        <button class="btn btn-primary" id="btn-save" type="submit">
+          <i data-lucide="save"></i>
+          Guardar
+        </button>
+      </div>
     </form>
     {{end}}
 
@@ -137,6 +164,20 @@
 </div>
 </div>
 
+<script type="module">
+  import { openDatePickerModal } from '/static/scripts/date-picker-modal.js';
+  import { validateInstallment } from '/static/scripts/form-validation/payment.js';
+
+  window.openDatePickerModal = openDatePickerModal;
+
+  const form = document.getElementById('installment-form');
+  form?.addEventListener('submit', (e) => {
+    if (!validateInstallment()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+</script>
 <script>
   lucide.createIcons();
   document.querySelectorAll('#installment-modal-overlay .money').forEach(function (el) {
@@ -146,6 +187,7 @@
   });
   document.addEventListener('keydown', function onInstallmentEsc(e) {
     if (e.key === 'Escape') {
+      if (document.querySelector('.date-picker-overlay')) return;
       var container = document.getElementById('app-modal-container');
       if (container) container.innerHTML = '';
       document.removeEventListener('keydown', onInstallmentEsc);
@@ -153,36 +195,55 @@
   });
 
   (function () {
+    var form = document.getElementById('installment-form');
     var isPaidInput = document.getElementById('is-paid');
     var paidAtInput = document.getElementById('paid-at');
+    var paidAtWrap = document.getElementById('paid-at-wrap');
     var toggleBtn = document.getElementById('toggle-paid-btn');
-    if (!isPaidInput || !paidAtInput || !toggleBtn) return;
+    if (!form || !isPaidInput || !paidAtInput || !toggleBtn) return;
 
     function setPaidState(paid) {
       isPaidInput.value = paid ? 'true' : 'false';
-      paidAtInput.disabled = !paid;
       if (!paid) {
         paidAtInput.value = '';
+        paidAtInput.disabled = true;
+        paidAtInput.setAttribute('readonly', 'readonly');
+        if (paidAtWrap) paidAtWrap.classList.add('is-hidden');
+      } else {
+        paidAtInput.disabled = false;
+        paidAtInput.setAttribute('readonly', 'readonly');
+        if (paidAtWrap) paidAtWrap.classList.remove('is-hidden');
       }
       toggleBtn.className = paid ? 'btn-unmark-payment' : 'btn-mark-payment';
-      toggleBtn.textContent = paid ? 'Quitar fecha de pago' : 'Registrar fecha de pago';
+      toggleBtn.innerHTML = paid
+        ? '<i data-lucide="x-circle"></i> Cancelar pago'
+        : '<i data-lucide="calendar-plus"></i> Registrar fecha';
       toggleBtn.setAttribute('aria-pressed', paid ? 'true' : 'false');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ nodes: [toggleBtn] });
+      }
+    }
+
+    function openPaidAtPicker() {
+      window.openDatePickerModal({
+        title: 'Fecha de pago',
+        initialValue: paidAtInput.value,
+        onConfirm: function (date) {
+          paidAtInput.value = date;
+          setPaidState(true);
+        }
+      });
     }
 
     toggleBtn.addEventListener('click', function () {
-      setPaidState(isPaidInput.value !== 'true');
+      if (isPaidInput.value === 'true') {
+        setPaidState(false);
+      } else {
+        openPaidAtPicker();
+      }
     });
-  })();
-</script>
-<script type="module">
-  import { validateInstallment } from '/static/scripts/form-validation/payment.js';
 
-  const form = document.getElementById('installment-form');
-  form?.addEventListener('submit', (e) => {
-    if (!validateInstallment()) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, true);
+    setPaidState(isPaidInput.value === 'true');
+  })();
 </script>
 {{end}}

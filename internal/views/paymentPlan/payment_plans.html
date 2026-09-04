@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -38,110 +40,193 @@
 
 {{define "payment-plans-content"}}
 
-<div class="page-header affiliate-header">
-  <h1 class="title-sm">Planes de pago de la empresa</h1>
-  <div class="header-actions">
-    <button class="btn btn-secondary" type="button"
-            hx-get="/companies/{{.CompanyID}}"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="arrow-left"></i>
-      Ficha de la empresa
-    </button>
-    <button class="btn btn-secondary" type="button"
-            hx-get="/companies/{{.CompanyID}}/payments"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="file-text"></i>
-      Ver pagos
-    </button>
-    {{if ne (len .PaymentPlans) 0}}
-    {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-    <button class="btn btn-primary" type="button"
-            hx-get="/companies/{{.CompanyID}}/payment_plans/new"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="plus"></i>
-      Crear plan
-    </button>
-    {{end}}
-    {{end}}
-  </div>
-</div>
+<div class="company-context-layout company-payment-plans-layout">
+  <aside class="affiliate-sidebar company-context-sidebar">
+    {{template "company-context-sidebar" .CompanyNav}}
+  </aside>
 
-<div class="card table-card">
-  {{if eq (len .PaymentPlans) 0}}
-    {{template "empty-state" .EmptyState}}
-  {{else}}
-  <div class="table-wrapper">
-    <table class="affiliate-table payment-plans-table">
-      <thead>
-        <tr>
-          <th>Monto</th>
-          <th class="col-center">Cuotas</th>
-          <th class="col-center">Primera cuota</th>
-          <th class="col-center">Última cuota</th>
-          <th class="col-estado">Estado</th>
-          <th class="col-action">Ficha</th>
-          {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
-          <th class="col-action">Acción</th>
-          {{end}}
-        </tr>
-      </thead>
-      <tbody>
-        {{range .PaymentPlans}}
-        <tr>
-          <td class="col-name">$ {{formatAmountAR .Amount}}</td>
-          <td class="col-center">{{.NumberOfInstallments}}</td>
-          <td class="col-center">{{.FirstDueDate}}</td>
-          <td class="col-center">{{.LastDueDate}}</td>
-          <td class="col-estado">
-            <span class="row-badge {{.StatusBadgeClass}}">{{.StatusLabel}}</span>
-          </td>
-          <td class="col-action">
-            <button class="table-btn blue" type="button"
-                    hx-get="/payment_plans/{{.ID}}"
-                    hx-target="#main-content"
-                    hx-swap="innerHTML"
-                    hx-push-url="true"
-                    title="Ver plan">
-              <i data-lucide="file-text"></i>
-            </button>
-          </td>
-          {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
-          <td class="col-action">
-            {{if eq .Status "pending"}}
-            <button class="table-btn red" type="button"
-                    hx-post="/payment_plans/{{.ID}}/cancel"
-                    hx-headers='{"view": "table"}'
-                    hx-confirm="¿Estás seguro de cancelar este plan de pago?"
-                    hx-target="#main-content"
-                    hx-swap="innerHTML"
-                    title="Cancelar plan">
-              <i data-lucide="x-circle"></i>
-            </button>
-            {{else if eq .Status "cancelled"}}
-            <button class="table-btn red" type="button"
-                    hx-delete="/payment_plans/{{.ID}}/permanent"
-                    hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
-                    hx-target="#main-content"
-                    hx-swap="innerHTML"
-                    title="Eliminar plan">
-              <i data-lucide="trash-2"></i>
-            </button>
+  {{template "company-mobile-actions" .CompanyNav}}
+
+  <div class="company-context-body company-payment-plans-body">
+    {{if and (.PageContext.UserAuthInfo.CanEdit "company") (ne (len .PaymentPlans) 0)}}
+    <div class="company-payment-plans-create">
+      <button class="btn btn-primary" type="button"
+              hx-get="/companies/{{.CompanyID}}/payment_plans/new"
+              hx-target="#main-content"
+              hx-push-url="true">
+        <i data-lucide="plus"></i>
+        Crear nuevo plan
+      </button>
+    </div>
+    {{end}}
+
+    <div class="card table-card">
+      {{if eq (len .PaymentPlans) 0}}
+        {{template "empty-state" .EmptyState}}
+      {{else}}
+      <div class="table-wrapper">
+        <table class="affiliate-table payment-plans-table">
+          <thead>
+            <tr>
+              <th>Monto</th>
+              <th class="col-center">Cuotas</th>
+              <th class="col-center">Primera cuota</th>
+              <th class="col-center">Última cuota</th>
+              <th class="col-estado">Estado</th>
+              <th class="col-action">Ficha</th>
+              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+              <th class="col-action">Acción</th>
+              {{end}}
+            </tr>
+          </thead>
+          <tbody>
+            {{range .PaymentPlans}}
+            <tr>
+              <td class="col-name">$ {{formatAmountAR .Amount}}</td>
+              <td class="col-center">{{.NumberOfInstallments}}</td>
+              <td class="col-center">{{.FirstDueDate}}</td>
+              <td class="col-center">{{.LastDueDate}}</td>
+              <td class="col-estado">
+                <span class="row-badge {{.StatusBadgeClass}}">{{.StatusLabel}}</span>
+              </td>
+              <td class="col-action">
+                <button class="table-btn blue" type="button"
+                        hx-get="/payment_plans/{{.ID}}"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        title="Ver plan">
+                  <i data-lucide="file-text"></i>
+                </button>
+              </td>
+              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+              <td class="col-action">
+                {{if eq .Status "pending"}}
+                <button class="table-btn red" type="button"
+                        hx-post="/payment_plans/{{.ID}}/cancel"
+                        hx-headers='{"view": "table"}'
+                        hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Cancelar plan">
+                  <i data-lucide="x-circle"></i>
+                </button>
+                {{else if eq .Status "cancelled"}}
+                <button class="table-btn red" type="button"
+                        hx-delete="/payment_plans/{{.ID}}/permanent"
+                        hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                        title="Eliminar plan">
+                  <i data-lucide="trash-2"></i>
+                </button>
+                {{end}}
+              </td>
+              {{end}}
+            </tr>
             {{end}}
-          </td>
-          {{end}}
-        </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-cards">
+        {{range .PaymentPlans}}
+        <article class="mobile-card mobile-card--clickable"
+                 hx-get="/payment_plans/{{.ID}}"
+                 hx-target="#main-content"
+                 hx-swap="innerHTML"
+                 hx-push-url="true">
+          <div class="mobile-card-title">$ {{formatAmountAR .Amount}}</div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-fields">
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Cuotas</span>
+                <span class="mobile-card-value">{{.NumberOfInstallments}}</span>
+              </div>
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Primera cuota</span>
+                <span class="mobile-card-value">{{.FirstDueDate}}</span>
+              </div>
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Última cuota</span>
+                <span class="mobile-card-value">{{.LastDueDate}}</span>
+              </div>
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Estado</span>
+                <span class="mobile-card-value">
+                  <span class="row-badge {{.StatusBadgeClass}}">{{.StatusLabel}}</span>
+                </span>
+              </div>
+            </div>
+            <div class="mobile-card-actions" onclick="event.stopPropagation()">
+              <button class="table-btn blue" type="button"
+                      hx-get="/payment_plans/{{.ID}}"
+                      hx-target="#main-content"
+                      hx-swap="innerHTML"
+                      hx-push-url="true"
+                      title="Ver plan">
+                <i data-lucide="file-text"></i>
+              </button>
+              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+              {{if eq .Status "pending"}}
+              <button class="table-btn red" type="button"
+                      hx-post="/payment_plans/{{.ID}}/cancel"
+                      hx-headers='{"view": "table"}'
+                      hx-confirm="¿Estás seguro de cancelar este plan de pago?"
+                      hx-target="#main-content"
+                      hx-swap="innerHTML"
+                      title="Cancelar plan">
+                <i data-lucide="x-circle"></i>
+              </button>
+              {{else if eq .Status "cancelled"}}
+              <button class="table-btn red" type="button"
+                      hx-delete="/payment_plans/{{.ID}}/permanent"
+                      hx-confirm="¿Estás seguro de eliminar este plan de pago? Esta acción no se puede deshacer."
+                      hx-target="#main-content"
+                      hx-swap="innerHTML"
+                      title="Eliminar plan">
+                <i data-lucide="trash-2"></i>
+              </button>
+              {{end}}
+              {{end}}
+            </div>
+          </div>
+        </article>
         {{end}}
-      </tbody>
-    </table>
+      </div>
+      {{end}}
+    </div>
   </div>
-  {{end}}
 </div>
 
 <script>
-  lucide.createIcons();
+  (function initPaymentPlansPage() {
+    function closeCompanyActionsMenu() {
+      var menu = document.getElementById('company-actions-menu');
+      var toggle = document.getElementById('company-actions-toggle');
+      if (menu) menu.classList.remove('show');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (window.lucide) lucide.createIcons();
+
+    if (!document.body.dataset.companyActionsBound) {
+      document.body.dataset.companyActionsBound = '1';
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#company-actions-dropdown')) {
+          closeCompanyActionsMenu();
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id !== 'main-content') return;
+        if (window.lucide) lucide.createIcons();
+        document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+          if (el.dataset.actionsBound) return;
+          el.dataset.actionsBound = '1';
+          el.addEventListener('click', closeCompanyActionsMenu);
+        });
+      });
+    }
+  })();
 </script>
 
 {{end}}

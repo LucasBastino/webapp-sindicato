@@ -1,0 +1,61 @@
+{{define "company-context-sidebar"}}
+<section class="card profile-card company-data-card">
+  <div class="profile-avatar">
+    <i data-lucide="building-2"></i>
+  </div>
+  <h3>{{.CompanyName}}</h3>
+  <div class="profile-meta-list">
+    {{if .CompanyNumber}}
+    <div class="profile-meta">
+      <span>N° de empresa</span>
+      <strong>{{.CompanyNumber}}</strong>
+    </div>
+    {{end}}
+    {{if .Address}}
+    <div class="profile-meta">
+      <span>Dirección</span>
+      <strong>{{.Address}}</strong>
+    </div>
+    {{end}}
+    {{if .Phone}}
+    <div class="profile-meta">
+      <span>Teléfono</span>
+      <strong>{{.Phone}}</strong>
+    </div>
+    {{end}}
+  </div>
+</section>
+
+<section class="card company-nav-card">
+  <button class="action-btn blue{{if eq .Active "ficha"}} is-active{{end}}" type="button"
+          hx-get="/companies/{{.CompanyID}}"
+          hx-target="#main-content"
+          hx-push-url="true">
+    <i data-lucide="building-2"></i>
+    Ficha de la empresa
+  </button>
+  {{if .CanViewMembers}}
+  <button class="action-btn blue{{if eq .Active "members"}} is-active{{end}}" type="button"
+          hx-get="/companies/{{.CompanyID}}/members?show-active=true"
+          hx-target="#main-content"
+          hx-push-url="true">
+    <i data-lucide="users"></i>
+    Afiliados
+  </button>
+  {{end}}
+  <button class="action-btn blue{{if eq .Active "payments"}} is-active{{end}}" type="button"
+          hx-get="/companies/{{.CompanyID}}/payments"
+          hx-target="#main-content"
+          hx-push-url="true">
+    <i data-lucide="wallet"></i>
+    Pago de aportes
+  </button>
+  <button class="action-btn blue{{if eq .Active "plans"}} is-active{{end}}" type="button"
+          hx-get="/companies/{{.CompanyID}}/payment_plans"
+          hx-target="#main-content"
+          hx-push-url="true">
+    <i data-lucide="file-text"></i>
+    Planes de pago
+  </button>
+</section>
+{{end}}

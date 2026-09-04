@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 )
 
 type ParentService struct {
@@ -64,6 +64,9 @@ func (s *ParentService) Create(ctx context.Context, parent Parent, idempotencyKe
 	id, err := s.repo.Insert(ctx, tx, parent)
 	if err!=nil{
 		return 0, apperrors.NewDatabaseError(err, "")
+	}
+	if id == 0 {
+		return 0, apperrors.NewBusinessError(errors.New("cannot create parent: member is inactive or does not exist"), "El afiliado no se encuentra activo.")
 	}
 
 	if err := s.idempotency.UpdateResource(ctx, tx, idempotencyKey, "parent", id); err != nil {

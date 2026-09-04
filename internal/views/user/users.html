@@ -9,8 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -37,12 +39,12 @@
 
 {{define "users-content"}}
 
-    <div class="table-header">
+    <div class="table-header users-page-header">
       <div class="table-header-left">
         <h1>Usuarios del sistema</h1>
         <p>Gestioná los usuarios, roles y permisos de acceso al sistema.</p>
       </div>
-      <div class="table-actions">
+      <div class="table-actions users-page-header-actions">
         <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
                 hx-get="/users/new"
                 hx-target="#main-content"
@@ -55,6 +57,17 @@
     </div>
 
     <div id="users-modal-container"></div>
+
+    <div class="mobile-list-toolbar users-mobile-toolbar">
+      <button class="btn btn-primary btn-add-table" type="button"
+              hx-get="/users/new"
+              hx-target="#main-content"
+              hx-swap="innerHTML"
+              hx-push-url="true">
+        <i data-lucide="plus"></i>
+        Agregar nuevo usuario
+      </button>
+    </div>
 
     <div class="card table-card users-table-card">
       {{if eq (len .Users) 0}}
@@ -135,6 +148,59 @@
             {{end}}
           </tbody>
         </table>
+      </div>
+      <div class="mobile-cards">
+        {{range .Users}}
+        <article class="mobile-card">
+          <div class="mobile-card-title">{{.Username}}</div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-fields">
+          <div class="mobile-card-row">
+            <span class="mobile-card-label">Admin</span>
+            <span class="mobile-card-value">
+              {{if .Admin}}
+              <span class="admin-badge yes">Sí</span>
+              {{else}}
+              <span class="admin-badge no">No</span>
+              {{end}}
+            </span>
+          </div>
+          <div class="mobile-card-row">
+            <span class="mobile-card-label">Creado</span>
+            <span class="mobile-card-value">{{.CreatedAt}}</span>
+          </div>
+            </div>
+          <div class="mobile-card-actions" onclick="event.stopPropagation()">
+            {{if ne .ID $.PageContext.UserAuthInfo.UserID}}
+            <button class="table-btn blue" type="button"
+                    hx-get="/users/{{.ID}}/permissions"
+                    hx-target="#users-modal-container"
+                    hx-swap="innerHTML"
+                    title="Ver / editar permisos">
+              <i data-lucide="shield"></i>
+            </button>
+            {{end}}
+            <button class="table-btn yellow" type="button"
+                    hx-get="/users/{{.ID}}/change-password"
+                    hx-target="#app-modal-container"
+                    hx-swap="innerHTML"
+                    title="Cambiar contraseña">
+              <i data-lucide="key-round"></i>
+            </button>
+            {{if ne .ID $.PageContext.UserAuthInfo.UserID}}
+            <button class="table-btn red" type="button"
+                    hx-delete="/users/{{.ID}}"
+                    hx-confirm="¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer."
+                    hx-target="#main-content"
+                    hx-swap="innerHTML"
+                    title="Eliminar usuario">
+              <i data-lucide="trash-2"></i>
+            </button>
+            {{end}}
+          </div>
+          </div>
+        </article>
+        {{end}}
       </div>
       {{end}}
     </div>

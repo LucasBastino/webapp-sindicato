@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -30,19 +32,35 @@
 
 {{define "payment-plans-overview-content"}}
 
-    <div class="page-header affiliate-header">
+    <div class="page-header affiliate-header payment-plans-overview-header">
       <div>
         <h1>Planes de pago</h1>
-        <p>Todos los planes de pago agrupados por empresa</p>
+        {{if .ShowCompleted}}
+        <p>Planes pendientes y completados agrupados por empresa</p>
+        {{else}}
+        <p>Planes pendientes agrupados por empresa</p>
+        {{end}}
       </div>
       <div class="header-actions">
+        {{if .ShowCompleted}}
         <button class="btn btn-secondary" type="button"
-                hx-get="/dashboard"
+                hx-get="/payment_plans/overview"
                 hx-target="#main-content"
+                hx-swap="innerHTML"
                 hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Dashboard
+          <i data-lucide="eye-off"></i>
+          Ocultar completados
         </button>
+        {{else}}
+        <button class="btn btn-secondary" type="button"
+                hx-get="/payment_plans/overview?show-completed=true"
+                hx-target="#main-content"
+                hx-swap="innerHTML"
+                hx-push-url="true">
+          <i data-lucide="eye"></i>
+          Mostrar completados
+        </button>
+        {{end}}
       </div>
     </div>
 
@@ -63,7 +81,7 @@
                hx-target="#main-content"
                hx-swap="innerHTML"
                hx-push-url="true">
-            <div class="list-icon {{if eq .StatusKey "completed"}}blue{{else if eq .StatusKey "cancelled"}}gray{{else}}orange{{end}}">
+            <div class="list-icon {{if eq .StatusKey "completed"}}green{{else if eq .StatusKey "cancelled"}}gray{{else}}orange{{end}}">
               <i data-lucide="credit-card"></i>
             </div>
             <div class="list-main">

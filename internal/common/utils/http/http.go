@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	userauthinfo "github.com/LucasBastino/app-sindicato/internal/features/user/authinfo"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	userauthinfo "github.com/LucasBastino/webapp-sindicato/internal/features/user/authinfo"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -76,4 +76,13 @@ func GetSearchKey(c *fiber.Ctx) string {
 		key = c.FormValue("search-key")
 	}
 	return key
+}
+
+// SessionRefreshToken returns the active refresh token for the current request.
+// After middleware rotation it may differ from the refresh_token request cookie.
+func SessionRefreshToken(c *fiber.Ctx) string {
+	if t, ok := c.Locals("sessionRefreshToken").(string); ok && t != "" {
+		return t
+	}
+	return c.Cookies("refresh_token")
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/JamesStewy/go-mysqldump"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/jmoiron/sqlx"
 )
 

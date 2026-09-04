@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/member"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/member"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -63,6 +63,14 @@ func CreateMembers(db *sqlx.DB) error {
 	decoder := json.NewDecoder(file)
 	jsonData := JSONData{}
 	decoder.Decode(&jsonData)
+
+	companyIDs, err := listActiveCompanyIDs(db, 50)
+	if err != nil {
+		return err
+	}
+	if len(companyIDs) == 0 {
+		return nil
+	}
 
 	members := make([]member.Member, 0, 100)
 	for range 100 {
@@ -119,10 +127,11 @@ func CreateMembers(db *sqlx.DB) error {
 		m.Address = fmt.Sprintf("%s %d", jsonData.Streets[rand.IntN(len(jsonData.Streets))].Name, rand.IntN(9999))
 		m.PostalCode = strconv.Itoa(rand.IntN(8000) + 1000)
 		m.District = jsonData.Streets[rand.IntN(len(jsonData.Streets))].Name
-		m.MemberNumber = strconv.Itoa(rand.IntN(9999999999))
-		cuil := fmt.Sprintf("%d-%s-%d", rand.IntN(9)+20, m.Dni, rand.IntN(8)+1)
+		memberNumber := randomMemberNumber()
+		m.MemberNumber = &memberNumber
+		cuil := cuilFromDNI(m.Dni)
 		m.Cuil = &cuil
-		m.CompanyID = rand.IntN(49) + 1
+		m.CompanyID = companyIDs[rand.IntN(len(companyIDs))]
 
 		switch {
 		case year <= 1960:
@@ -166,7 +175,7 @@ func CreateMembers(db *sqlx.DB) error {
 		return nil
 	}
 
-	query := "INSERT INTO members (name, last_name, dni, birthday, gender, marital_status, phone, email, address, postal_code, district, member_number, cuil, id_company, category, entry_date, observations) VALUES"
+	query := "INSERT IGNORE INTO members (name, last_name, dni, birthday, gender, marital_status, phone, email, address, postal_code, district, member_number, cuil, id_company, category, entry_date, observations) VALUES"
 	placeholders := make([]string, 0, len(members))
 	args := make([]any, 0, len(members)*17)
 	for _, m := range members {

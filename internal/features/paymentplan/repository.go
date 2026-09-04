@@ -86,7 +86,11 @@ type planWithCompanyRow struct {
 	UpdatedAt            time.Time `db:"updated_at"`
 }
 
-func (r *PaymentPlanRepository) FindAllWithCompany(ctx context.Context) ([]planWithCompanyRow, error) {
+func (r *PaymentPlanRepository) FindAllWithCompany(ctx context.Context, includeCompleted bool) ([]planWithCompanyRow, error) {
+	statusFilter := "COALESCE(PP.status, 'pending') = 'pending'"
+	if includeCompleted {
+		statusFilter = "COALESCE(PP.status, 'pending') IN ('pending', 'completed')"
+	}
 	query := `
 		SELECT
 			PP.id_payment_plan,
@@ -101,6 +105,7 @@ func (r *PaymentPlanRepository) FindAllWithCompany(ctx context.Context) ([]planW
 		FROM payment_plans PP
 		INNER JOIN companies C ON PP.id_company = C.id_company
 		WHERE C.deleted_at IS NULL
+			AND ` + statusFilter + `
 		ORDER BY C.name ASC, PP.updated_at DESC
 	`
 	var rows []planWithCompanyRow
@@ -117,6 +122,7 @@ func (r *PaymentPlanRepository) CountAll(ctx context.Context) (int, error) {
 		FROM payment_plans PP
 		INNER JOIN companies C ON PP.id_company = C.id_company
 		WHERE C.deleted_at IS NULL
+			AND COALESCE(PP.status, 'pending') = 'pending'
 	`
 	var total int
 	err := r.db.GetContext(ctx, &total, query)
@@ -232,6 +238,39 @@ func (r *PaymentPlanRepository) Count(ctx context.Context, companyID int) (int, 
 		return 0, fmt.Errorf("failed to get total rows while fetching payment plans: %w", err)
 	}
 	return totalRows, nil
+}
+
+func (r *PaymentPlanRepository) GetCompanyName(ctx context.Context, companyID int) (string, error) {
+	info, err := r.GetCompanySidebar(ctx, companyID)
+	if err != nil {
+		return "", err
+	}
+	return info.Name, nil
+}
+
+type companySidebarRow struct {
+	Name          string `db:"name"`
+	CompanyNumber string `db:"company_number"`
+	Address       string `db:"address"`
+	Phone         string `db:"phone"`
+}
+
+func (r *PaymentPlanRepository) GetCompanySidebar(ctx context.Context, companyID int) (*companySidebarRow, error) {
+	query := `
+		SELECT
+			name,
+			COALESCE(company_number, '') AS company_number,
+			COALESCE(address, '') AS address,
+			COALESCE(phone, '') AS phone
+		FROM companies
+		WHERE id_company = ?
+	`
+	var row companySidebarRow
+	err := r.db.GetContext(ctx, &row, query, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get company sidebar: %w", err)
+	}
+	return &row, nil
 }
 
 func (r *PaymentPlanRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {

@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Empresas del sistema</title>
+  <title>Empresas del sindicato</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -61,25 +63,10 @@
 </script>
 
     <div class="table-header">
-      <h1>Empresas del sistema</h1>
-      <div class="table-actions">
-        <div class="search-wrapper">
-          <i data-lucide="search"></i>
-          <input type="text" id="search-input" name="search-key" form="companies-filters"
-                 placeholder="Buscar empresas..." value="{{.PageContext.SearchKey}}">
-        </div>
-        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
-                hx-get="/companies/new"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="plus"></i>
-          Agregar empresa
-        </button>
-        {{end}}
-      </div>
+      <h1>Empresas del sindicato</h1>
     </div>
 
+    <div class="table-toolbar">
     <form id="companies-filters" class="status-filters"
           hx-get="/companies"
           hx-target="#companies-table-results"
@@ -107,83 +94,169 @@
       </label>
     </form>
 
-    <div id="companies-table-results" class="card table-card">
-      {{if eq (len .Companies) 0}}
-        {{template "empty-state" .EmptyState}}
-      {{else}}
-      <div class="table-wrapper">
-        <table class="affiliate-table" id="companies-table">
-          <thead>
-            <tr>
-              <th class="col-c-name">Empresa</th>
-              <th class="col-c-number">N° Empresa</th>
-              <th class="col-c-address">Dirección</th>
-              <th class="col-estado">Estado</th>
-              <th>Ficha</th>
-              {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
-              <th>Acción</th>
+      <div class="table-actions">
+        <div class="search-wrapper">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" name="search-key" form="companies-filters"
+                 placeholder="Buscar empresas..." value="{{.PageContext.SearchKey}}">
+        </div>
+        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+        <button class="btn btn-primary btn-add-table" id="btn-add" type="button"
+                hx-get="/companies/new"
+                hx-target="#main-content"
+                hx-push-url="true">
+          <i data-lucide="plus"></i>
+          Agregar empresa
+        </button>
+        {{end}}
+      </div>
+    </div>
+
+    <div id="companies-table-results">
+      <div class="card table-card">
+        {{if eq (len .Companies) 0}}
+          {{template "empty-state" .EmptyState}}
+        {{else}}
+        <div class="table-wrapper">
+          <table class="affiliate-table" id="companies-table">
+            <thead>
+              <tr>
+                <th class="col-c-name">Empresa</th>
+                <th class="col-c-number">N° Empresa</th>
+                <th class="col-c-address">Dirección</th>
+                <th class="col-estado">Estado</th>
+                <th>Ficha</th>
+                {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+                <th>Acción</th>
+                {{end}}
+              </tr>
+            </thead>
+            <tbody id="company-table-body">
+              {{range .Companies}}
+              <tr {{if .IsDeleted}}class="row-deleted"{{end}}>
+                <td class="col-c-name">{{.Name}}</td>
+                <td class="col-c-number">{{.CompanyNumber}}</td>
+                <td class="col-c-address">{{.Address}}</td>
+                <td class="col-estado">
+                  {{if .IsDeleted}}
+                    <span class="row-badge deleted">Eliminada</span>
+                  {{else}}
+                    <span class="row-badge active">Activa</span>
+                  {{end}}
+                </td>
+                <td class="col-action">
+                  <button class="table-btn blue" type="button"
+                          hx-get="/companies/{{.ID}}"
+                          hx-target="#main-content"
+                          hx-push-url="true"
+                          title="Ver ficha">
+                    <i data-lucide="file-text"></i>
+                  </button>
+                </td>
+                {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
+                <td class="col-action">
+                  {{if .IsDeleted}}
+                  <button class="table-btn green" type="button"
+                          hx-post="/companies/{{.ID}}/restore"
+                          hx-headers='{"view": "table"}'
+                          hx-include="#companies-filters, #search-input"
+                          hx-confirm="¿Estás seguro de restaurar esta empresa?"
+                          hx-target="#companies-table-results"
+                          hx-select="#companies-table-results"
+                          hx-swap="outerHTML"
+                          title="Restaurar empresa">
+                    <i data-lucide="rotate-ccw"></i>
+                  </button>
+                  {{else}}
+                  <button class="table-btn red" type="button"
+                          hx-delete="/companies/{{.ID}}/"
+                          hx-include="#companies-filters, #search-input"
+                          hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                          hx-target="#companies-table-results"
+                          hx-select="#companies-table-results"
+                          hx-swap="outerHTML"
+                          title="Eliminar empresa">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                  {{end}}
+                </td>
+                {{end}}
+              </tr>
               {{end}}
-            </tr>
-          </thead>
-          <tbody id="company-table-body">
-            {{range .Companies}}
-            <tr {{if .IsDeleted}}class="row-deleted"{{end}}>
-              <td class="col-c-name">{{.Name}}</td>
-              <td class="col-c-number">{{.CompanyNumber}}</td>
-              <td class="col-c-address">{{.Address}}</td>
-              <td class="col-estado">
+            </tbody>
+          </table>
+        </div>
+        <div class="mobile-cards">
+          {{range .Companies}}
+          <article class="mobile-card mobile-card--clickable"
+                   hx-get="/companies/{{.ID}}"
+                   hx-target="#main-content"
+                   hx-push-url="true">
+            <div class="mobile-card-title">{{.Name}}</div>
+            <div class="mobile-card-body">
+              <div class="mobile-card-fields">
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">N° Empresa</span>
+              <span class="mobile-card-value">{{.CompanyNumber}}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Dirección</span>
+              <span class="mobile-card-value">{{.Address}}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Estado</span>
+              <span class="mobile-card-value">
                 {{if .IsDeleted}}
                   <span class="row-badge deleted">Eliminada</span>
                 {{else}}
                   <span class="row-badge active">Activa</span>
                 {{end}}
-              </td>
-              <td class="col-action">
-                <button class="table-btn blue" type="button"
-                        hx-get="/companies/{{.ID}}"
-                        hx-target="#main-content"
-                        hx-push-url="true"
-                        title="Ver ficha">
-                  <i data-lucide="file-text"></i>
-                </button>
-              </td>
+              </span>
+            </div>
+              </div>
+            <div class="mobile-card-actions" onclick="event.stopPropagation()">
+              <button class="table-btn blue" type="button"
+                      hx-get="/companies/{{.ID}}"
+                      hx-target="#main-content"
+                      hx-push-url="true"
+                      title="Ver ficha">
+                <i data-lucide="file-text"></i>
+              </button>
               {{if $.PageContext.UserAuthInfo.CanEdit "company"}}
-              <td class="col-action">
-                {{if .IsDeleted}}
-                <button class="table-btn green" type="button"
-                        hx-post="/companies/{{.ID}}/restore"
-                        hx-headers='{"view": "table"}'
-                        hx-include="#companies-filters, #search-input"
-                        hx-confirm="¿Estás seguro de restaurar esta empresa?"
-                        hx-target="#companies-table-results"
-                        hx-select="#companies-table-results"
-                        hx-swap="outerHTML"
-                        title="Restaurar empresa">
-                  <i data-lucide="rotate-ccw"></i>
-                </button>
-                {{else}}
-                <button class="table-btn red" type="button"
-                        hx-delete="/companies/{{.ID}}/"
-                        hx-include="#companies-filters, #search-input"
-                        hx-confirm="¿Estás seguro de eliminar esta empresa?"
-                        hx-target="#companies-table-results"
-                        hx-select="#companies-table-results"
-                        hx-swap="outerHTML"
-                        title="Eliminar empresa">
-                  <i data-lucide="trash-2"></i>
-                </button>
-                {{end}}
-              </td>
+              {{if .IsDeleted}}
+              <button class="table-btn green" type="button"
+                      hx-post="/companies/{{.ID}}/restore"
+                      hx-headers='{"view": "table"}'
+                      hx-include="#companies-filters, #search-input"
+                      hx-confirm="¿Estás seguro de restaurar esta empresa?"
+                      hx-target="#companies-table-results"
+                      hx-select="#companies-table-results"
+                      hx-swap="outerHTML"
+                      title="Restaurar empresa">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+              {{else}}
+              <button class="table-btn red" type="button"
+                      hx-delete="/companies/{{.ID}}/"
+                      hx-include="#companies-filters, #search-input"
+                      hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                      hx-target="#companies-table-results"
+                      hx-select="#companies-table-results"
+                      hx-swap="outerHTML"
+                      title="Eliminar empresa">
+                <i data-lucide="trash-2"></i>
+              </button>
               {{end}}
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
+              {{end}}
+            </div>
+            </div>
+          </article>
+          {{end}}
+        </div>
+        {{end}}
       </div>
-      {{end}}
+      {{template "pagination" .PageContext}}
     </div>
-
-    {{template "pagination" .PageContext}}
 
 {{end}}
 

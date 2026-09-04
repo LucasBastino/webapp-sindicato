@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
-	"github.com/LucasBastino/app-sindicato/internal/features/company"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/company"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -49,7 +49,10 @@ func (h *MemberHandler) renderPageByID(c *fiber.Ctx, id int) error {
 	}
 	res := toResponse(*member)
 	pageContext	:= page.PageContext{Mode: "edit", UserAuthInfo: userAuthInfo, ActiveSection: "members"}
-	pageData := pageData{Member: res, PageContext: pageContext}
+	pageData := pageData{
+		Member:      res,
+		PageContext: pageContext,
+	}
 	if c.Get("HX-Request") == "true" {
 		return c.Render("member-content", pageData)
 	}
@@ -189,6 +192,16 @@ func (h *MemberHandler) renderDefaultTable(c *fiber.Ctx) error {
 			return err
 		}
 		tablePageData.CompanyName = companyModel.Name
+		number := ""
+		if companyModel.CompanyNumber != nil {
+			number = *companyModel.CompanyNumber
+		}
+		tablePageData.CompanyNav = page.NewCompanyNav(
+			companyIDParam,
+			companyModel.Name,
+			"members",
+			userAuthInfo.CanView("member"),
+		).WithDetails(number, companyModel.Address, companyModel.Phone)
 	}
 
 	if c.Get("HX-Request") == "true" {
@@ -303,13 +316,20 @@ func (h *MemberHandler) Create(c *fiber.Ctx) error {
 			}
 			PageContext := page.PageContext{UserAuthInfo: userAuthInfo, Mode: "add", ActiveSection: activeSection}
 			pageData := pageData{Member: res, PageContext: PageContext, Errors: errorMap}
-			return h.renderMemberPage(c, pageData, fiber.StatusConflict)
+			status := fiber.StatusConflict
+			if c.Get("HX-Request") == "true" {
+				status = fiber.StatusOK
+			}
+			return h.renderMemberPage(c, pageData, status)
 		}
 		return err
 	}
 
-	c.Status(fiber.StatusCreated)
-	return h.renderPageByID(c, id)
+	if c.Get("HX-Request") == "true" {
+		c.Set("HX-Redirect", fmt.Sprintf("/members/%d", id))
+		return c.SendStatus(fiber.StatusOK)
+	}
+	return c.Redirect(fmt.Sprintf("/members/%d", id), fiber.StatusSeeOther)
 
 }
 
@@ -360,7 +380,11 @@ func (h *MemberHandler) Update(c *fiber.Ctx) error {
 		}
 
 		pageContext := page.PageContext{Mode: "edit", UserAuthInfo: userAuthInfo, ActiveSection: "members"}
-		pageData := pageData{Member: res, PageContext: pageContext, Errors: errorMap}
+		pageData := pageData{
+			Member:      res,
+			PageContext: pageContext,
+			Errors:      errorMap,
+		}
 		status := fiber.StatusBadRequest
 		if c.Get("HX-Request") == "true" {
 			status = fiber.StatusOK
@@ -380,8 +404,16 @@ func (h *MemberHandler) Update(c *fiber.Ctx) error {
 				return err
 			}
 			pageContext := page.PageContext{Mode: "edit", UserAuthInfo: userAuthInfo, ActiveSection: "members"}
-			pageData := pageData{Member: res, PageContext: pageContext, Errors: errorMap}
-			return h.renderMemberPage(c, pageData, fiber.StatusConflict)
+			pageData := pageData{
+				Member:      res,
+				PageContext: pageContext,
+				Errors:      errorMap,
+			}
+			status := fiber.StatusConflict
+			if c.Get("HX-Request") == "true" {
+				status = fiber.StatusOK
+			}
+			return h.renderMemberPage(c, pageData, status)
 		}
 		return err
 	}

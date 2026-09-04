@@ -25,12 +25,14 @@ export function getInputValue(id) {
 
 export function showError(id, error) {
     const input = document.getElementById(id);
-    const formGroup = input ? input.closest(".form-group") : null;
-    const errorEl = (formGroup && formGroup.querySelector(".field-error"))
+    const container = input
+        ? (input.closest(".form-group") || input.closest(".modal-form-row"))
+        : null;
+    const errorEl = (container && container.querySelector(".field-error"))
         || document.querySelector(`.${id}-error`);
     if (errorEl) errorEl.innerHTML = error;
     if (input) {
-        if (formGroup) formGroup.classList.add("input-invalid");
+        if (container) container.classList.add("input-invalid");
         else input.classList.add("input-invalid");
     }
 }

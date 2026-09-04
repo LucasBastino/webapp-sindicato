@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -13,23 +13,19 @@ func LoggerMiddleware(logger logger.Logger) fiber.Handler {
 	// no loggea el GET a favicon
 	return func(c *fiber.Ctx) error {
 		if c.Path() == "/favicon.ico" {
-        return c.Next()
-    }
-
-		// en fiber v2 el middleware oficial de requestid lo guarda automaticamente en locals como "requestid"
-		requestID, ok := c.Locals("requestid").(string)
-		if !ok {
-			requestID = ""
-		}
-
-		userID, ok := c.Locals("userID").(string)
-		if !ok {
-			userID = ""
+			return c.Next()
 		}
 
 		start := time.Now()
 		err := c.Next()
 		duration := time.Since(start)
+
+		// requestid y userAuthInfo se setean más abajo en la chain (tras c.Next).
+		requestID, ok := c.Locals("requestid").(string)
+		if !ok {
+			requestID = ""
+		}
+		userID := userIDFromLocals(c)
 
 		// los inicializo antes para mas seguridad
 		errorType := "internal"

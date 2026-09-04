@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	pu "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	pu "github.com/LucasBastino/webapp-sindicato/internal/common/utils/parser"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 func toCreateInput(req request) (CreateInput, error) {
@@ -107,7 +107,7 @@ func toResponse(detail PaymentPlanDetail) response {
 			res.TotalPaid += inst.Amount
 			if inst.PaidAt != nil {
 				item.PaidAt = inst.PaidAt.Format("02/01/2006")
-				item.DateLabel = "Pagada el " + item.PaidAt
+				item.DateLabel = "Se pagó el " + item.PaidAt
 			}
 		case "Vencido":
 			item.Status = "Vencida"

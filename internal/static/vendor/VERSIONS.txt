@@ -1,0 +1,2 @@
+htmx.org@1.9.12
+lucide@1.31.0

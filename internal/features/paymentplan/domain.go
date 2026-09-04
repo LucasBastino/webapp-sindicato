@@ -3,7 +3,7 @@ package paymentplan
 import (
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
 )
 
 type PaymentPlan struct {

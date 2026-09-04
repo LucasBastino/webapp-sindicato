@@ -3,11 +3,12 @@ package payment
 import (
 	"fmt"
 	"strconv"
+	"time"
 
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -71,7 +72,7 @@ func (h *PaymentHandler) RenderGrid(c *fiber.Ctx) error {
 		return err
 	}
 
-	companyName, err := h.service.GetCompanyName(ctx, companyID)
+	companyName, number, address, phone, err := h.service.GetCompanyNavDetails(ctx, companyID)
 	if err != nil {
 		return err
 	}
@@ -85,6 +86,8 @@ func (h *PaymentHandler) RenderGrid(c *fiber.Ctx) error {
 	data := gridPageData{
 		CompanyID:   companyID,
 		CompanyName: companyName,
+		CompanyNav: page.NewCompanyNav(companyID, companyName, "payments", userAuthInfo.CanView("member")).
+			WithDetails(number, address, phone),
 		PageContext: pageContext,
 	}
 
@@ -108,13 +111,9 @@ func (h *PaymentHandler) RenderGrid(c *fiber.Ctx) error {
 	}
 
 	data.Years = years
-	yearInt := years[0]
-	if year != "" && year != "0" {
-		parsed, err := strconv.Atoi(year)
-		if err != nil {
-			return apperrors.NewBadRequestError(fmt.Errorf("failed to parse year: %w", err), "")
-		}
-		yearInt = parsed
+	yearInt, err := resolvePaymentYear(year, years, time.Now())
+	if err != nil {
+		return apperrors.NewBadRequestError(fmt.Errorf("failed to parse year: %w", err), "")
 	}
 
 	payments, err := h.service.List(ctx, companyID, yearInt)
@@ -151,8 +150,8 @@ func (h *PaymentHandler) RenderOverdue(c *fiber.Ctx) error {
 	if len(groups) == 0 {
 		data.EmptyState = page.EmptyState{
 			Icon:        "alert-triangle",
-			Title:       "No hay pagos vencidos",
-			Description: "No hay pagos vencidos para mostrar.",
+			Title:       "No hay aportes vencidos",
+			Description: "No hay aportes vencidos para mostrar.",
 		}
 	}
 
@@ -221,8 +220,30 @@ func (h *PaymentHandler) Update(c *fiber.Ctx) error {
 		return err
 	}
 
-	c.Set("HX-Retarget", "#app-modal-container")
-	c.Set("HX-Reswap", "innerHTML")
-	c.Set("HX-Trigger", "refreshPayments")
+	// Close modal first; refresh the underlying payments/overdue view after settle.
+	c.Set("HX-Trigger-After-Settle", "refreshPayments")
 	return c.SendString("")
+}
+
+func resolvePaymentYear(requestedYear string, availableYears []int, now time.Time) (int, error) {
+	if requestedYear != "" && requestedYear != "0" {
+		parsed, err := strconv.Atoi(requestedYear)
+		if err != nil {
+			return 0, err
+		}
+		return parsed, nil
+	}
+
+	currentYear := now.Year()
+	for _, y := range availableYears {
+		if y == currentYear {
+			return currentYear, nil
+		}
+	}
+
+	if len(availableYears) > 0 {
+		return availableYears[0], nil
+	}
+
+	return currentYear, nil
 }

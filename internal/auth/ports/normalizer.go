@@ -1,6 +1,6 @@
 package authports
 
-import authdomain "github.com/LucasBastino/app-sindicato/internal/auth/domain"
+import authdomain "github.com/LucasBastino/webapp-sindicato/internal/auth/domain"
 
 type ClaimsNormalizer interface {
 	NormalizeClaims(any) *authdomain.AuthClaims

@@ -13,6 +13,7 @@ type response struct {
 	Observations string
 	IsInPaymentPlan bool
 
+	DueDateRFC string
 	UpdatedAt string
 }
 

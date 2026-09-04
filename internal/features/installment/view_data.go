@@ -1,6 +1,6 @@
 package installment
 
-import "github.com/LucasBastino/app-sindicato/internal/common/page"
+import "github.com/LucasBastino/webapp-sindicato/internal/common/page"
 
 type pageData struct {
 	Installment        response

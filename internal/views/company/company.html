@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -34,23 +36,27 @@
     <div class="affiliate-form-page">
     {{end}}
 
+    {{if eq .PageContext.Mode "add"}}
     <div class="page-header affiliate-header">
-      {{if eq .PageContext.Mode "add"}}
-      <h1>Agregar Empresa</h1>
+      <h1>Agregar empresa</h1>
       <p>Completá los datos para registrar una nueva empresa</p>
-      {{else}}
-      <h1>{{.Company.Name}}</h1>
-      <p>Visualización completa de datos de la empresa</p>
-      <div class="header-actions">
-        <button class="btn btn-secondary" type="button"
-                hx-get="/companies"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Tabla de empresas
-        </button>
-        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-        <button class="btn btn-secondary" id="btn-edit" type="button">
+    </div>
+
+    <div class="affiliate-grid affiliate-grid--form-only">
+      <form id="company-form"
+            class="affiliate-main is-editing"
+            hx-post="/companies"
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+    {{else}}
+    <div class="company-ficha-layout">
+      <div class="page-header affiliate-header company-ficha-header">
+        <h1>{{.Company.Name}}</h1>
+      </div>
+
+      {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+      <div class="header-actions company-ficha-actions company-ficha-actions--desktop">
+        <button class="btn btn-secondary js-company-edit-trigger" id="btn-edit" type="button">
           <i data-lucide="pencil"></i>
           Editar
         </button>
@@ -58,30 +64,135 @@
           <i data-lucide="save"></i>
           Guardar
         </button>
-        {{end}}
       </div>
       {{end}}
-    </div>
 
-    <!-- MAIN GRID -->
+      <aside class="affiliate-sidebar company-ficha-sidebar">
 
-    <div class="affiliate-grid{{if eq .PageContext.Mode "add"}} affiliate-grid--form-only{{end}}">
+        {{template "company-context-sidebar" .CompanyNav}}
 
-      <!-- LEFT COLUMN -->
+        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+        <div class="card company-actions-card">
+          {{if .Company.IsDeleted}}
+          <button class="action-btn green"
+                  hx-post="/companies/{{.Company.ID}}/restore"
+                  hx-headers='{"view": "page"}'
+                  hx-confirm="¿Estás seguro de restaurar esta empresa?"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML">
+            <i data-lucide="rotate-ccw"></i>
+            Restaurar empresa
+          </button>
+          <button class="action-btn red"
+                  hx-delete="/companies/{{.Company.ID}}/permanent"
+                  hx-confirm="¿Estás seguro de eliminar permanentemente esta empresa? Esta acción no se puede deshacer."
+                  hx-target="#main-content"
+                  hx-push-url="/companies">
+            <i data-lucide="trash-2"></i>
+            Eliminar permanentemente
+          </button>
+          {{else}}
+          <button class="action-btn red"
+                  hx-delete="/companies/{{.Company.ID}}"
+                  hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                  hx-target="#main-content"
+                  hx-push-url="/companies">
+            <i data-lucide="trash-2"></i>
+            Eliminar empresa
+          </button>
+          {{end}}
+        </div>
+        {{end}}
 
-      {{if eq .PageContext.Mode "add"}}
+      </aside>
+
+      <div class="company-ficha-mobile-actions">
+        <div class="company-actions-dropdown actions-dropdown" id="company-actions-dropdown">
+          <button type="button"
+                  class="btn btn-outline company-actions-trigger actions-trigger"
+                  id="company-actions-toggle"
+                  aria-expanded="false"
+                  aria-haspopup="true"
+                  aria-controls="company-actions-menu">
+            Acciones
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <div class="actions-menu company-actions-menu" id="company-actions-menu" role="menu">
+            {{if .PageContext.UserAuthInfo.CanEdit "company"}}
+            <button type="button" class="js-company-edit-trigger" role="menuitem">
+              <i data-lucide="pencil"></i>
+              Editar
+            </button>
+            {{if .Company.IsDeleted}}
+            <button type="button" class="success" role="menuitem"
+                    hx-post="/companies/{{.Company.ID}}/restore"
+                    hx-headers='{"view": "page"}'
+                    hx-confirm="¿Estás seguro de restaurar esta empresa?"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML">
+              <i data-lucide="rotate-ccw"></i>
+              Restaurar empresa
+            </button>
+            <button type="button" class="danger" role="menuitem"
+                    hx-delete="/companies/{{.Company.ID}}/permanent"
+                    hx-confirm="¿Estás seguro de eliminar permanentemente esta empresa? Esta acción no se puede deshacer."
+                    hx-target="#main-content"
+                    hx-push-url="/companies">
+              <i data-lucide="trash-2"></i>
+              Eliminar permanentemente
+            </button>
+            {{else}}
+            <button type="button" class="danger" role="menuitem"
+                    hx-delete="/companies/{{.Company.ID}}"
+                    hx-confirm="¿Estás seguro de eliminar esta empresa?"
+                    hx-target="#main-content"
+                    hx-push-url="/companies">
+              <i data-lucide="trash-2"></i>
+              Eliminar empresa
+            </button>
+            {{end}}
+            <div class="actions-menu-separator" role="separator"></div>
+            {{end}}
+            <button type="button" class="company-nav-item{{if eq .CompanyNav.Active "ficha"}} is-active{{end}}" role="menuitem"
+                    hx-get="/companies/{{.CompanyNav.CompanyID}}"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+              <i data-lucide="building-2"></i>
+              Ficha de la empresa
+            </button>
+            {{if .CompanyNav.CanViewMembers}}
+            <button type="button" class="company-nav-item{{if eq .CompanyNav.Active "members"}} is-active{{end}}" role="menuitem"
+                    hx-get="/companies/{{.CompanyNav.CompanyID}}/members?show-active=true"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+              <i data-lucide="users"></i>
+              Afiliados
+            </button>
+            {{end}}
+            <button type="button" class="company-nav-item{{if eq .CompanyNav.Active "payments"}} is-active{{end}}" role="menuitem"
+                    hx-get="/companies/{{.CompanyNav.CompanyID}}/payments"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+              <i data-lucide="wallet"></i>
+              Pago de aportes
+            </button>
+            <button type="button" class="company-nav-item{{if eq .CompanyNav.Active "plans"}} is-active{{end}}" role="menuitem"
+                    hx-get="/companies/{{.CompanyNav.CompanyID}}/payment_plans"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+              <i data-lucide="file-text"></i>
+              Planes de pago
+            </button>
+          </div>
+        </div>
+      </div>
+
       <form id="company-form"
-            class="affiliate-main is-editing"
-            hx-post="/companies"
-            hx-target="#main-content"
-            hx-swap="innerHTML">
-      {{else}}
-      <form id="company-form"
-            class="affiliate-main"
+            class="affiliate-main company-ficha-main"
             hx-put="/companies/{{.Company.ID}}"
             hx-target="#main-content"
             hx-swap="innerHTML">
-      {{end}}
+    {{end}}
 
         <!-- DATOS DE LA EMPRESA -->
 
@@ -173,96 +284,29 @@
             <i data-lucide="plus"></i>
             Agregar
           </button>
+          {{else}}
+          {{if and (not .Company.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "company")}}
+          <button class="btn btn-secondary js-company-edit-trigger" type="button" id="btn-cancel-footer" style="display:none;">
+            <i data-lucide="x"></i>
+            Cancelar
+          </button>
+          <button class="btn btn-primary" type="submit" id="btn-save-footer" style="display:none;">
+            <i data-lucide="save"></i>
+            Guardar
+          </button>
+          {{end}}
+          <div class="entity-meta">
+            <i data-lucide="clock"></i>
+            <span>Creado: {{.Company.CreatedAt}} &bull; Actualizado: {{.Company.UpdatedAt}}</span>
+          </div>
           {{end}}
         </div>
 
       </form>
-
-      {{if ne .PageContext.Mode "add"}}
-      <!-- RIGHT SIDEBAR -->
-
-      <aside class="affiliate-sidebar">
-
-        <!-- COMPANY PROFILE CARD -->
-
-        <div class="card profile-card">
-          <div class="profile-avatar">
-            <i data-lucide="building-2"></i>
-          </div>
-          <h3>{{.Company.Name}}</h3>
-          <div class="profile-meta">
-            <span>N° de empresa</span>
-            <strong>{{.Company.CompanyNumber}}</strong>
-          </div>
-          <div class="status-divider"></div>
-        </div>
-
-        <!-- GESTIÓN -->
-
-        <div class="card">
-          <h3>Gestión</h3>
-          {{if .PageContext.UserAuthInfo.CanView "member"}}
-          <div class="action-item" style="cursor:pointer;"
-               hx-get="/companies/{{.Company.ID}}/members?show-active=true"
-               hx-target="#main-content"
-               hx-push-url="true">
-            <i data-lucide="users"></i>
-            Ver afiliados
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
-          {{end}}
-          <div class="action-item" style="cursor:pointer;"
-               hx-get="/companies/{{.Company.ID}}/payments"
-               hx-target="#main-content"
-               hx-push-url="true">
-            <i data-lucide="wallet"></i>
-            Ver pagos
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
-        </div>
-
-        <!-- ACCIONES -->
-
-        {{if .PageContext.UserAuthInfo.CanEdit "company"}}
-        <div class="card">
-          <h3>Acciones</h3>
-          {{if .Company.IsDeleted}}
-          <button class="action-btn green"
-                  hx-post="/companies/{{.Company.ID}}/restore"
-                  hx-headers='{"view": "page"}'
-                  hx-confirm="¿Estás seguro de restaurar esta empresa?"
-                  hx-target="#main-content"
-                  hx-swap="innerHTML">
-            <i data-lucide="rotate-ccw"></i>
-            Restaurar empresa
-          </button>
-          <button class="action-btn red"
-                  hx-delete="/companies/{{.Company.ID}}/permanent"
-                  hx-confirm="¿Estás seguro de eliminar permanentemente esta empresa? Esta acción no se puede deshacer."
-                  hx-target="#main-content"
-                  hx-push-url="/companies">
-            <i data-lucide="trash-2"></i>
-            Eliminar permanentemente
-          </button>
-          {{else}}
-          <button class="action-btn red"
-                  hx-delete="/companies/{{.Company.ID}}"
-                  hx-confirm="¿Estás seguro de eliminar esta empresa?"
-                  hx-target="#main-content"
-                  hx-push-url="/companies">
-            <i data-lucide="trash-2"></i>
-            Eliminar empresa
-          </button>
-          {{end}}
-        </div>
-        {{end}}
-
-      </aside>
-      {{end}}
-
+    {{if ne .PageContext.Mode "add"}}
     </div>
-
-    {{if eq .PageContext.Mode "add"}}
+    {{else}}
+    </div>
     </div>
     {{end}}
 
@@ -281,16 +325,32 @@
       evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
     }
   });
-  {{else if .PageContext.UserAuthInfo.CanEdit "company"}}
+  {{else}}
+  function closeCompanyActionsMenu() {
+    var menu = document.getElementById('company-actions-menu');
+    var toggle = document.getElementById('company-actions-toggle');
+    if (menu) menu.classList.remove('show');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+    el.addEventListener('click', closeCompanyActionsMenu);
+  });
+
+  {{if .PageContext.UserAuthInfo.CanEdit "company"}}
   var isEditing = false;
   var companyForm = document.getElementById('company-form');
   var formInputs = document.querySelectorAll('#company-form input, #company-form select, #company-form textarea');
   var btnEdit = document.getElementById('btn-edit');
   var btnSave = document.getElementById('btn-save');
+  var btnSaveFooter = document.getElementById('btn-save-footer');
+  var btnCancelFooter = document.getElementById('btn-cancel-footer');
 
   function setEditing(editing) {
     isEditing = editing;
     companyForm.classList.toggle('is-editing', isEditing);
+    var layout = document.querySelector('.company-ficha-layout');
+    if (layout) layout.classList.toggle('is-editing', isEditing);
     formInputs.forEach(function(input) {
       if (isEditing) {
         if (input.tagName === 'SELECT') { input.disabled = false; }
@@ -302,24 +362,30 @@
         input.classList.remove('editable');
       }
     });
-    if (btnEdit) {
-      btnEdit.innerHTML = isEditing
-        ? '<i data-lucide="x"></i> Cancelar'
-        : '<i data-lucide="pencil"></i> Editar';
-    }
+    document.querySelectorAll('.js-company-edit-trigger').forEach(function(btn) {
+      if (btn.id === 'btn-edit') {
+        btn.innerHTML = isEditing
+          ? '<i data-lucide="x"></i> Cancelar'
+          : '<i data-lucide="pencil"></i> Editar';
+      }
+    });
     if (btnSave) btnSave.style.display = isEditing ? 'flex' : 'none';
+    if (btnSaveFooter) btnSaveFooter.style.display = isEditing ? 'flex' : 'none';
+    if (btnCancelFooter) btnCancelFooter.style.display = isEditing ? 'flex' : 'none';
+    closeCompanyActionsMenu();
     lucide.createIcons();
   }
 
-  if (btnEdit) {
-    btnEdit.addEventListener('click', function() {
+  document.querySelectorAll('.js-company-edit-trigger').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       setEditing(!isEditing);
     });
+  });
 
-    {{if .Errors}}
-    setEditing(true);
-    {{end}}
-  }
+  {{if .Errors}}
+  setEditing(true);
+  {{end}}
+  {{end}}
   {{end}}
 </script>
 

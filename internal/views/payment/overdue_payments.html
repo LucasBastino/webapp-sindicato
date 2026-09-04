@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pagos vencidos</title>
+  <title>Aportes vencidos</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -39,17 +41,7 @@
 
     <div class="page-header affiliate-header">
       <div>
-        <h1>Pagos vencidos</h1>
-        <p>Pagos pendientes cuya fecha de vencimiento ya pasó</p>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-secondary" type="button"
-                hx-get="/dashboard"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Dashboard
-        </button>
+        <h1>Aportes vencidos</h1>
       </div>
     </div>
 
@@ -82,12 +74,13 @@
           </div>
           {{end}}
         </div>
-        <div style="padding:12px 16px 16px;">
+        <div class="overdue-company-footer">
           <a href="/companies/{{.CompanyID}}/payments"
+             class="overdue-company-link"
              hx-get="/companies/{{.CompanyID}}/payments"
              hx-target="#main-content"
              hx-push-url="true">
-            Ver pagos de la empresa
+            Ver aportes de la empresa
           </a>
         </div>
       </div>

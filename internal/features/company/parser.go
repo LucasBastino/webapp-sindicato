@@ -3,7 +3,7 @@ package company
 import (
 	"strings"
 
-	p "github.com/LucasBastino/app-sindicato/internal/common/utils/parser"
+	p "github.com/LucasBastino/webapp-sindicato/internal/common/utils/parser"
 )
 
 

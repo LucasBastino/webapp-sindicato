@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	httpUtils "github.com/LucasBastino/app-sindicato/internal/common/utils/http"
-	"github.com/LucasBastino/app-sindicato/internal/features/member"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	httpUtils "github.com/LucasBastino/webapp-sindicato/internal/common/utils/http"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/member"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -108,11 +108,25 @@ func (h *ParentHandler) RenderTable(c *fiber.Ctx) error {
 		return err
 	}
 	memberName := fmt.Sprintf("%s, %s", memberModel.LastName, memberModel.Name)
+	memberNumber := ""
+	if memberModel.MemberNumber != nil {
+		memberNumber = *memberModel.MemberNumber
+	}
 
 	tablePageData := tablePageData{
 		Parents:      parents,
 		MemberID:     memberID,
 		MemberName:   memberName,
+		Member: memberCardData{
+			ID:           memberModel.ID,
+			Name:         memberModel.Name,
+			LastName:     memberModel.LastName,
+			MemberNumber: memberNumber,
+			Dni:          memberModel.Dni,
+			Phone:        memberModel.Phone,
+			CompanyID:    memberModel.CompanyID,
+			CompanyName:  memberModel.CompanyName,
+		},
 		TotalResults: totalRows,
 		EmptyState:   emptyState,
 		PageContext:  pageContext,

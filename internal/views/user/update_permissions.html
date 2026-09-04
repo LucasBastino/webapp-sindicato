@@ -49,7 +49,7 @@
           </div>
 
           <div class="form-group{{if index .Errors "company"}} input-invalid{{end}}">
-            <label for="company">Empresas y pagos</label>
+            <label for="company">Empresas y aportes</label>
             <select id="company" name="company" class="permission-select" {{if .Admin}}disabled{{end}}>
               <option value="editor" {{if or .Admin (eq (.Role "company") "editor")}}selected{{end}}>Editor</option>
               <option value="viewer" {{if and (not .Admin) (eq (.Role "company") "viewer")}}selected{{end}}>Solo lectura</option>

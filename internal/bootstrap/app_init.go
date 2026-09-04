@@ -3,10 +3,10 @@ package bootstrap
 import (
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/functiontemplates"
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/http/errorhandler"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/functiontemplates"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/http/errorhandler"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
 )
@@ -15,6 +15,7 @@ import (
 func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error) {
 	
 	engine := html.New("./internal/views", ".html")
+	engine.Reload(true)
 	engine.AddFunc("formatAmountAR", functiontemplates.FormatAmountAR)
 	engine.AddFunc("formatAmountInput", functiontemplates.FormatAmountInput)
 	// engine := html.NewFileSystem(http.FS(viewFiles), ".html")
@@ -22,7 +23,7 @@ func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error
 
 	infra, err := buildInfra(cfg, logger)
 	services := buildServices(infra, cfg)
-	httpComponents := buildHTTPComponents(services, infra)
+	httpComponents := buildHTTPComponents(services, infra, cfg.Auth.CookieSecure)
 	services.license.StartChecker()
 	startCron(services.payment, services.backUp, services.idempotency, logger)
 
@@ -41,7 +42,8 @@ func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error
 
 	// Initializing and config app
 	app := fiber.New(fiber.Config{
-		Views: engine,
+		Views:     engine,
+		BodyLimit: 1 * 1024 * 1024, // 1 MiB — enough for HTML forms; no large uploads
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return errorhandler.HandleError(c, err)
 		},
@@ -56,7 +58,7 @@ func InitApp(cfg config.Config, logger logger.Logger) (*fiber.App, func(), error
 	// app.StaticFS("/static", http.FS(staticFiles))
 	// app.Use("/static", adaptor.HTTPHandler(http.StripPrefix("/static", http.FileServer(http.FS(embedfsSub(staticFiles, "src/static"))))))
 
-	registerMiddlewares(app, httpComponents.auth.middleware, infra.logger)
+	registerMiddlewares(app, httpComponents.auth.middleware, infra.logger, cfg.Auth)
 	registerRoutes(app, httpComponents)
 	
 	return app, cleanup, nil

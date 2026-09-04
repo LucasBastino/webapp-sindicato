@@ -17,7 +17,7 @@ export function validatePaymentPlan() {
     if (!checked.length) {
         ok = false;
         if (paymentIdsError) {
-            paymentIdsError.innerHTML = "Debés seleccionar al menos un pago vencido.";
+            paymentIdsError.innerHTML = "Debés seleccionar al menos un aporte vencido.";
         }
         const list = document.querySelector(".payment-plan-checklist");
         if (list) list.classList.add("input-invalid");

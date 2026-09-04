@@ -1,6 +1,17 @@
 package parent
 
-import "github.com/LucasBastino/app-sindicato/internal/common/page"
+import "github.com/LucasBastino/webapp-sindicato/internal/common/page"
+
+type memberCardData struct {
+	ID           int
+	Name         string
+	LastName     string
+	MemberNumber string
+	Dni          string
+	Phone        string
+	CompanyID    int
+	CompanyName  string
+}
 
 type tablePageData struct {
 	Parents      []response
@@ -8,6 +19,7 @@ type tablePageData struct {
 	EmptyState   page.EmptyState
 	MemberID     int
 	MemberName   string
+	Member       memberCardData
 	PageContext  page.PageContext
 }
 

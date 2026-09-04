@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	userAuthInfo "github.com/LucasBastino/app-sindicato/internal/features/user/authinfo"
+	userAuthInfo "github.com/LucasBastino/webapp-sindicato/internal/features/user/authinfo"
 )
 
 type PageContext struct {

@@ -1,0 +1,38 @@
+{{define "company-nav-actions-menu"}}
+<button type="button" class="company-nav-item{{if eq .Active "ficha"}} is-active{{end}}" role="menuitem"
+        hx-get="/companies/{{.CompanyID}}"
+        hx-target="#main-content"
+        hx-push-url="true">
+  <i data-lucide="building-2"></i>
+  Ficha de la empresa
+</button>
+{{if .CanViewMembers}}
+<button type="button" class="company-nav-item{{if eq .Active "members"}} is-active{{end}}" role="menuitem"
+        hx-get="/companies/{{.CompanyID}}/members?show-active=true"
+        hx-target="#main-content"
+        hx-push-url="true">
+  <i data-lucide="users"></i>
+  Afiliados
+</button>
+{{end}}
+<button type="button" class="company-nav-item{{if eq .Active "payments"}} is-active{{end}}" role="menuitem"
+        hx-get="/companies/{{.CompanyID}}/payments"
+        hx-target="#main-content"
+        hx-push-url="true">
+  <i data-lucide="wallet"></i>
+  Pago de aportes
+</button>
+<button type="button" class="company-nav-item{{if eq .Active "plans"}} is-active{{end}}" role="menuitem"
+        hx-get="/companies/{{.CompanyID}}/payment_plans"
+        hx-target="#main-content"
+        hx-push-url="true">
+  <i data-lucide="file-text"></i>
+  Planes de pago
+</button>
+{{if eq .Active "payments"}}
+<button type="button" class="company-nav-item" role="menuitem" onclick="window.print()">
+  <i data-lucide="printer"></i>
+  Imprimir aportes
+</button>
+{{end}}
+{{end}}

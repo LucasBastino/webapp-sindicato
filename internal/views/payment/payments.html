@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pagos de Empresa</title>
+  <title>Aportes de Empresa</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -25,6 +27,14 @@
   </main>
 
 </div>
+
+<script>
+  lucide.createIcons();
+  document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+  });
+</script>
+
 </body>
 </html>
 
@@ -37,124 +47,207 @@
          hx-swap="innerHTML swap:120ms settle:120ms"
          style="display:none"></div>
 
-    <div class="page-header affiliate-header">
-      <div>
-        <h1>Pagos de {{if .CompanyName}}{{.CompanyName}}{{else}}la empresa{{end}}</h1>
-        <p>Resumen mensual de pagos y aportes · Año {{.Year}}</p>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-secondary print-action" type="button" onclick="window.print()">
-          <i data-lucide="printer"></i>
-          Imprimir pagos
-        </button>
-        <button class="btn btn-secondary" type="button"
-                hx-get="/companies/{{.CompanyID}}"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Ficha de la empresa
-        </button>
-        <button class="btn btn-secondary" type="button"
-                hx-get="/companies/{{.CompanyID}}/payment_plans"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="file-text"></i>
-          Ver planes de pago
-        </button>
-      </div>
-    </div>
+    <div class="company-context-layout company-payments-layout">
+      <aside class="affiliate-sidebar company-context-sidebar">
+        {{template "company-context-sidebar" .CompanyNav}}
+        <section class="card company-actions-card company-actions-card--print">
+          <button class="action-btn blue print-action" type="button" onclick="window.print()">
+            <i data-lucide="printer"></i>
+            Imprimir aportes
+          </button>
+        </section>
+      </aside>
 
-    {{if eq (len .Years) 0}}
-    <div class="empty-state">
-      <div class="empty-state-icon"><i data-lucide="wallet"></i></div>
-      <h3 class="empty-state-title">No hay pagos registrados</h3>
-      <p class="empty-state-description">Todavía no hay pagos mensuales para esta empresa.</p>
-    </div>
-    {{else}}
+      {{template "company-mobile-actions" .CompanyNav}}
 
-    <div class="year-filter">
-      <label for="year-select">Año</label>
-      <select id="year-select" name="year"
-              hx-get="/companies/{{.CompanyID}}/payments"
-              hx-target="#main-content"
-              hx-swap="innerHTML swap:120ms settle:120ms"
-              hx-push-url="true"
-              hx-include="this">
-        {{range .Years}}
-        <option value="{{.}}" {{if eq . $.Year}}selected{{end}}>{{.}}</option>
-        {{end}}
-      </select>
-    </div>
+      <div class="company-context-body company-payments-body company-payments-print">
+        {{if eq (len .Years) 0}}
+        <div class="empty-state">
+          <div class="empty-state-icon"><i data-lucide="wallet"></i></div>
+          <h3 class="empty-state-title">No hay aportes registrados</h3>
+          <p class="empty-state-description">Todavía no hay aportes mensuales para esta empresa.</p>
+        </div>
+        {{else}}
 
-    <section class="stats-grid stats-grid--four">
-      <div class="card stat-card">
-        <div class="stat-icon green"><i data-lucide="check"></i></div>
-        <div class="stat-content">
-          <span>Completados</span>
-          <h2>{{.Stats.CompletedCount}}</h2>
-          <div class="positive money" data-amount="{{printf "%.2f" .Stats.CompletedAmount}}"></div>
-        </div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-icon" style="background:#fee2e2;color:#dc2626;"><i data-lucide="alert-triangle"></i></div>
-        <div class="stat-content">
-          <span>Vencidos</span>
-          <h2>{{.Stats.OverdueCount}}</h2>
-          <div class="negative money" data-amount="{{printf "%.2f" .Stats.OverdueAmount}}"></div>
-        </div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-icon" style="background:#f1f5f9;color:#64748b;"><i data-lucide="clock"></i></div>
-        <div class="stat-content">
-          <span>Pendientes</span>
-          <h2>{{.Stats.PendingCount}}</h2>
-          <div class="money" style="color:#64748b;" data-amount="{{printf "%.2f" .Stats.PendingAmount}}"></div>
-        </div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-icon orange"><i data-lucide="credit-card"></i></div>
-        <div class="stat-content">
-          <span>En plan de pago</span>
-          <h2>{{.Stats.InPlanCount}}</h2>
-          <div class="money" style="color:#d97706;" data-amount="{{printf "%.2f" .Stats.InPlanAmount}}"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="payments-grid">
-      {{range .Payments}}
-      <div class="monthly-card {{if eq .Status "Completado"}}green-bg{{else if eq .Status "En plan de pago"}}yellow-bg{{else if eq .Status "Vencido"}}red-bg{{else}}gray-bg{{end}}"
-           style="cursor:pointer;"
-           hx-get="/payments/{{.ID}}"
-           hx-target="#app-modal-container"
-           hx-swap="innerHTML">
-        <h3>{{.MonthName}}</h3>
-        <div class="monthly-status">
-          <div class="status-icon {{if eq .Status "Completado"}}green{{else if eq .Status "En plan de pago"}}yellow{{else if eq .Status "Vencido"}}red{{else}}gray{{end}}">
-            {{if eq .Status "Completado"}}
-            <i data-lucide="check"></i>
-            {{else if eq .Status "Vencido"}}
-            <i data-lucide="alert-circle"></i>
-            {{else}}
-            <i data-lucide="clock"></i>
-            {{end}}
+        <div class="company-payments-stats-row">
+          <div class="year-filter year-filter--payments">
+            <label class="year-filter-label" id="year-picker-label">Año</label>
+            <div class="year-picker" id="year-picker">
+              <button type="button"
+                      class="year-picker-trigger"
+                      id="year-picker-toggle"
+                      aria-expanded="false"
+                      aria-haspopup="listbox"
+                      aria-labelledby="year-picker-label year-picker-value">
+                <span class="year-picker-trigger-main">
+                  <span class="year-picker-label-inline" aria-hidden="true">Año</span>
+                  <span class="year-picker-value" id="year-picker-value">{{.Year}}</span>
+                </span>
+                <i data-lucide="chevron-down"></i>
+              </button>
+              <div class="year-picker-menu" id="year-picker-menu" role="listbox">
+                {{range .Years}}
+                <button type="button"
+                        class="year-picker-option{{if eq . $.Year}} is-active{{end}}"
+                        role="option"
+                        hx-get="/companies/{{$.CompanyID}}/payments?year={{.}}"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML swap:120ms settle:120ms"
+                        hx-push-url="true">
+                  {{.}}
+                </button>
+                {{end}}
+              </div>
+            </div>
           </div>
-          <span class="status-text {{if eq .Status "Completado"}}green{{else if eq .Status "En plan de pago"}}yellow{{else if eq .Status "Vencido"}}red{{else}}gray{{end}}">{{.Status}}</span>
+
+          <div class="card stat-card company-payments-stat">
+            <div class="stat-icon green"><i data-lucide="check"></i></div>
+            <div class="stat-content">
+              <span>Completados</span>
+              <div class="positive money" data-amount="{{printf "%.2f" .Stats.CompletedAmount}}"></div>
+            </div>
+            <h2 class="stat-value">{{.Stats.CompletedCount}}</h2>
+          </div>
+          <div class="card stat-card company-payments-stat">
+            <div class="stat-icon" style="background:#fee2e2;color:#dc2626;"><i data-lucide="alert-triangle"></i></div>
+            <div class="stat-content">
+              <span>Vencidos</span>
+              <div class="negative money" data-amount="{{printf "%.2f" .Stats.OverdueAmount}}"></div>
+            </div>
+            <h2 class="stat-value">{{.Stats.OverdueCount}}</h2>
+          </div>
+          <div class="card stat-card company-payments-stat">
+            <div class="stat-icon" style="background:#f1f5f9;color:#64748b;"><i data-lucide="clock"></i></div>
+            <div class="stat-content">
+              <span>Pendientes</span>
+              <div class="money" style="color:#64748b;" data-amount="{{printf "%.2f" .Stats.PendingAmount}}"></div>
+            </div>
+            <h2 class="stat-value">{{.Stats.PendingCount}}</h2>
+          </div>
+          <div class="card stat-card company-payments-stat">
+            <div class="stat-icon orange"><i data-lucide="credit-card"></i></div>
+            <div class="stat-content">
+              <span>En plan de pago</span>
+              <div class="money" style="color:#d97706;" data-amount="{{printf "%.2f" .Stats.InPlanAmount}}"></div>
+            </div>
+            <h2 class="stat-value">{{.Stats.InPlanCount}}</h2>
+          </div>
         </div>
-        <p class="monthly-amount"><span class="money" data-amount="{{printf "%.2f" .Amount}}"></span></p>
-        <p class="monthly-date{{if eq .Status "Vencido"}} red{{end}}">{{.DateLabel}}</p>
+
+        <section class="payments-grid">
+          {{range .Payments}}
+          <div class="monthly-card {{if eq .Status "Completado"}}green-bg{{else if eq .Status "En plan de pago"}}yellow-bg{{else if eq .Status "Vencido"}}red-bg{{else}}gray-bg{{end}}"
+               hx-get="/payments/{{.ID}}"
+               hx-target="#app-modal-container"
+               hx-swap="innerHTML">
+            <h3>{{.MonthName}}</h3>
+            <div class="monthly-status">
+              <div class="status-icon {{if eq .Status "Completado"}}green{{else if eq .Status "En plan de pago"}}yellow{{else if eq .Status "Vencido"}}red{{else}}gray{{end}}">
+                {{if eq .Status "Completado"}}
+                <i data-lucide="check"></i>
+                {{else if eq .Status "Vencido"}}
+                <i data-lucide="alert-circle"></i>
+                {{else}}
+                <i data-lucide="clock"></i>
+                {{end}}
+              </div>
+              <span class="status-text {{if eq .Status "Completado"}}green{{else if eq .Status "En plan de pago"}}yellow{{else if eq .Status "Vencido"}}red{{else}}gray{{end}}">{{.Status}}</span>
+            </div>
+            <p class="monthly-amount"><span class="money" data-amount="{{printf "%.2f" .Amount}}"></span></p>
+            <p class="monthly-date{{if eq .Status "Vencido"}} red{{end}}">{{.DateLabel}}</p>
+          </div>
+          {{end}}
+        </section>
+        {{end}}
       </div>
-      {{end}}
-    </section>
-    {{end}}
+    </div>
 
 <script>
-  lucide.createIcons();
-  document.querySelectorAll('.money').forEach(function (el) {
-    var n = Number(el.getAttribute('data-amount'));
-    if (Number.isNaN(n)) return;
-    el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  });
+  (function initPaymentsPage() {
+    function formatMoney() {
+      document.querySelectorAll('#main-content .money, .company-payments-body .money').forEach(function(el) {
+        if (el.dataset.formatted === '1') return;
+        var n = Number(el.getAttribute('data-amount'));
+        if (Number.isNaN(n)) return;
+        el.textContent = '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        el.dataset.formatted = '1';
+      });
+    }
+
+    function closeCompanyActionsMenu() {
+      var menu = document.getElementById('company-actions-menu');
+      var toggle = document.getElementById('company-actions-toggle');
+      if (menu) menu.classList.remove('show');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function closeYearPicker() {
+      var menu = document.getElementById('year-picker-menu');
+      var toggle = document.getElementById('year-picker-toggle');
+      if (menu) menu.classList.remove('show');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (window.lucide) lucide.createIcons();
+    formatMoney();
+
+    var yearToggle = document.getElementById('year-picker-toggle');
+    if (yearToggle && !yearToggle.dataset.bound) {
+      yearToggle.dataset.bound = '1';
+      yearToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        closeCompanyActionsMenu();
+        var menu = document.getElementById('year-picker-menu');
+        if (!menu) return;
+        var open = menu.classList.toggle('show');
+        yearToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (window.lucide) lucide.createIcons();
+      });
+    }
+
+    document.querySelectorAll('#year-picker-menu .year-picker-option').forEach(function(el) {
+      if (el.dataset.bound) return;
+      el.dataset.bound = '1';
+      el.addEventListener('click', closeYearPicker);
+    });
+
+    var actionsToggle = document.getElementById('company-actions-toggle');
+    if (actionsToggle && !actionsToggle.dataset.yearPickerBound) {
+      actionsToggle.dataset.yearPickerBound = '1';
+      actionsToggle.addEventListener('click', function() {
+        closeYearPicker();
+      });
+    }
+
+    if (!document.body.dataset.companyActionsBound) {
+      document.body.dataset.companyActionsBound = '1';
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#company-actions-dropdown')) {
+          closeCompanyActionsMenu();
+        }
+        if (!e.target.closest('#year-picker')) {
+          closeYearPicker();
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id !== 'main-content') return;
+        if (window.lucide) lucide.createIcons();
+        formatMoney();
+        document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+          if (el.dataset.actionsBound) return;
+          el.dataset.actionsBound = '1';
+          el.addEventListener('click', closeCompanyActionsMenu);
+        });
+      });
+    }
+
+    document.querySelectorAll('#company-actions-menu [hx-get], #company-actions-menu [hx-delete], #company-actions-menu [hx-post]').forEach(function(el) {
+      if (el.dataset.actionsBound) return;
+      el.dataset.actionsBound = '1';
+      el.addEventListener('click', closeCompanyActionsMenu);
+    });
+  })();
 </script>
 
 {{end}}

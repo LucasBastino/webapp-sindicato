@@ -6,33 +6,39 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
 	"github.com/jmoiron/sqlx"
 )
 
 func CreatePayments(db *sqlx.DB) error {
-	var pp []payment.Payment
+	companyIDs, err := listActiveCompanyIDs(db, 50)
+	if err != nil {
+		return err
+	}
+	if len(companyIDs) == 0 {
+		return nil
+	}
 
-	for i := range 50 {
-		for j := range 12 {
-			var p payment.Payment
-			p.Month = j + 1
-			p.Year = 2027
-			p.IsInPaymentPlan = false
-			p.Observations = fmt.Sprintf("texto aleatorio numero %d", rand.IntN(999))
-			p.CompanyID = i + 1
-			dueDate := time.Date(p.Year, time.Month(p.Month), 15, 0, 0, 0, 0, time.UTC)
-			p.DueDate = dueDate
-			random := rand.IntN(10)
-			if random == 1 {
-				p.PaidAt = nil
-			} else {
-				paidAt := time.Date(p.Year, time.Month(p.Month), 5, 0, 0, 0, 0, time.UTC)
-				p.PaidAt = &paidAt
+	now := time.Now()
+	currentYear := now.Year()
+	years := []int{currentYear -1, currentYear, currentYear + 1}
+
+	var pp []payment.Payment
+	for _, companyID := range companyIDs {
+		for _, year := range years {
+			for month := 1; month <= 12; month++ {
+				p := payment.Payment{
+					Month:           month,
+					Year:            year,
+					IsInPaymentPlan: false,
+					Observations:    fmt.Sprintf("texto aleatorio numero %d", rand.IntN(999)),
+					CompanyID:       companyID,
+					DueDate:         time.Date(year, time.Month(month), 15, 0, 0, 0, 0, time.UTC),
+				}
+				p.PaidAt = seedPaymentPaidAt(year, month, now, rand.IntN)
+				p.Amount = seedPaymentAmount(year, month, now, rand.IntN)
+				pp = append(pp, p)
 			}
-			amt := float32(rand.IntN(50000) + 50000)
-			p.Amount = &amt
-			pp = append(pp, p)
 		}
 	}
 
@@ -40,7 +46,7 @@ func CreatePayments(db *sqlx.DB) error {
 		return nil
 	}
 
-	query := `INSERT INTO payments(
+	query := `INSERT IGNORE INTO payments(
 		month,
 		year,
 		due_date,
@@ -58,61 +64,9 @@ func CreatePayments(db *sqlx.DB) error {
 	}
 	query += strings.Join(placeholders, ",")
 
-	_, err := db.Exec(query, args...)
-	if err != nil {
+	if _, err := db.Exec(query, args...); err != nil {
 		return fmt.Errorf("error inserting payments: %w", err)
 	}
 	fmt.Println("payments created")
 	return nil
 }
-
-// func CreatePayments(db *sqlx.DB) error {
-// 	var pp []payment.Payment
-// 	var p payment.Payment
-//
-// 	for i := range 50 {
-// 		for j:= range 12 {
-// 			p.Month = j+1
-// 			p.Year = 2026
-// 			p.IsInPaymentPlan = false
-// 			p.Observations = fmt.Sprintf("texto aleatorio numero %d", rand.IntN(999))
-// 			p.CompanyID = i + 1
-// 			dueDate := time.Date(p.Year, time.Month(p.Month), 15, 0, 0, 0, 0, time.UTC)
-// 			p.DueDate = &dueDate
-// 			random := rand.IntN(10)
-// 			if random == 1 {
-// 				p.PaidAt = nil
-// 			} else {
-// 				paidAt := time.Date(p.Year, time.Month(p.Month), 5, 0, 0, 0, 0, time.UTC)
-// 				p.PaidAt = &paidAt
-// 			}
-// 			amt := float32(rand.IntN(50000) + 50000)
-// 			p.Amount = &amt
-// 			pp = append(pp, p)
-// 		}
-// 	}
-//
-//
-//
-// 	for _, p := range pp {
-// 		insert, err := db.Query(`
-// 		INSERT INTO payments(
-// 		month,
-// 		year,
-// 		due_date,
-// 		amount,
-// 		paid_at,
-// 		is_in_payment_plan,
-// 		observations,
-// 		id_company
-// 		)
-// 		VALUES (?,?,?,?,?,?,?,?)`,
-// 			p.Month, p.Year, p.DueDate, p.Amount, p.PaidAt, p.IsInPaymentPlan, p.Observations, p.CompanyID)
-// 		if err != nil {
-// 			return fmt.Errorf("error inserting payments: %w", err)
-// 		}
-// 		insert.Close()
-// 	}
-// 	fmt.Println("payments created")
-// 	return nil
-// }

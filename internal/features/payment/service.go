@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -32,6 +32,13 @@ func (s *PaymentService) GetCompanyName(ctx context.Context, id int) (string, er
 		return "", err
 	}
 	return name, nil
+}
+
+func (s *PaymentService) GetCompanyNavDetails(ctx context.Context, id int) (name, number, address, phone string, err error) {
+	if s.companyReader == nil {
+		return "", "", "", "", apperrors.NewInternalError(errors.New("company reader not configured"), "")
+	}
+	return s.companyReader.GetNavDetails(ctx, id)
 }
 
 func (s *PaymentService) Get(ctx context.Context, id int) (*Payment, error) {
@@ -177,7 +184,7 @@ func (s *PaymentService) Update(ctx context.Context, id int, payment Payment) er
 	}
 	
 	if paymentDB.IsInPaymentPlan{
-		return apperrors.NewBusinessError(errors.New("failed to update payment: can't update payment while it is in payment plan"), "No puedes editar un pago que está dentro de un plan de pago")
+		return apperrors.NewBusinessError(errors.New("failed to update payment: can't update payment while it is in payment plan"), "No puedes editar un aporte que está dentro de un plan de pago")
 	}
 
 	err = s.repo.Update(ctx, id, payment)

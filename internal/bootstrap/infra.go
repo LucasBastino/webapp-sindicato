@@ -3,12 +3,12 @@ package bootstrap
 import (
 	"fmt"
 
-	authadapters "github.com/LucasBastino/app-sindicato/internal/auth/adapters"
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/infra/database"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
-	"github.com/LucasBastino/app-sindicato/internal/security/password"
+	authadapters "github.com/LucasBastino/webapp-sindicato/internal/auth/adapters"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/database"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/security/password"
 	"github.com/jmoiron/sqlx"
 )
 

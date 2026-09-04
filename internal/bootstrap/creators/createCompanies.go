@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/LucasBastino/app-sindicato/internal/features/company"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/company"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -33,9 +33,9 @@ func CreateCompanies(db *sqlx.DB) error {
 	for range 50 {
 		var co company.Company
 		co.Name = jsonData.CompaniesNames[rand.IntN(len(jsonData.CompaniesNames))]
-		companyNumber := strconv.Itoa(rand.IntN(8000) + 1000)
+		companyNumber := randomCompanyNumber()
 		co.CompanyNumber = &companyNumber
-		cuit := fmt.Sprintf("%d-%d-%d", rand.IntN(9)+20, rand.IntN(8999999)+1000000, rand.IntN(8)+1)
+		cuit := generateRandomCuilCuit()
 		co.Cuit = &cuit
 		co.Address = fmt.Sprintf("%s %d", jsonData.Streets[rand.IntN(len(jsonData.Streets))].Name, rand.IntN(9999))
 		co.District = jsonData.Streets[rand.IntN(len(jsonData.Streets))].Name
@@ -50,7 +50,7 @@ func CreateCompanies(db *sqlx.DB) error {
 		return nil
 	}
 
-	query := "INSERT INTO companies (name, company_number, address, cuit, district, postal_code, phone, contact, observations) VALUES"
+	query := "INSERT IGNORE INTO companies (name, company_number, address, cuit, district, postal_code, phone, contact, observations) VALUES"
 	placeholders := make([]string, 0, len(companies))
 	args := make([]any, 0, len(companies)*9)
 	for _, co := range companies {

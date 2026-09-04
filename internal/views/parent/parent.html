@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -37,7 +39,7 @@
         <i data-lucide="users"></i>
       </div>
       <div class="modal-header-text">
-        <h2>{{if eq .PageContext.Mode "add"}}Agregar familiar{{else}}Ver familiar{{end}}</h2>
+        <h2>{{if eq .PageContext.Mode "add"}}Agregar familiar{{else}}Ficha{{end}}</h2>
       </div>
       <button class="close-btn" id="btn-close" type="button" aria-label="Cerrar"
               hx-get="/members/{{.MemberID}}/parents"
@@ -79,7 +81,7 @@
         </div>
 
         <div class="modal-form-row">
-          <label for="relationship">Parentesco <span class="required-marker">*</span></label>
+          <label for="relationship">Parentesco</label>
           <input type="text" id="relationship" name="relationship"
                  value="{{.Parent.Relationship}}"
                  {{if ne .PageContext.Mode "add"}}readonly{{end}}
@@ -88,17 +90,18 @@
         </div>
 
         <div class="modal-form-row">
-          <label for="birthday">Fecha de nacimiento <span class="required-marker">*</span></label>
+          <label for="birthday">Fecha de nacimiento</label>
           <input type="text" id="birthday" name="birthday"
                  value="{{.Parent.Birthday}}"
                  placeholder="DD/MM/AAAA"
+                 data-date-input inputmode="numeric" autocomplete="off" maxlength="10"
                  {{if ne .PageContext.Mode "add"}}readonly{{end}}
                  {{if index .Errors "birthday"}}class="input-invalid"{{end}} />
           <span class="birthday-error field-error">{{with index .Errors "birthday"}}{{.}}{{end}}</span>
         </div>
 
         <div class="modal-form-row">
-          <label for="gender">Género <span class="required-marker">*</span></label>
+          <label for="gender">Género</label>
           <select id="gender" name="gender" {{if ne .PageContext.Mode "add"}}disabled{{end}}
                   {{if index .Errors "gender"}}class="input-invalid"{{end}}>
             <option value="" {{if eq .Parent.Gender ""}}selected{{end}}>Seleccionar</option>
@@ -123,8 +126,9 @@
         </div>
 
         <div class="modal-form-row modal-form-row--auto">
-          <label for="observations">Observaciones</label>
+          <label for="observations" class="sr-only">Observaciones</label>
           <textarea id="observations" name="observations"
+                    placeholder="Observaciones (opcional)"
                     {{if ne .PageContext.Mode "add"}}readonly{{end}}
                     rows="3">{{.Parent.Observations}}</textarea>
         </div>
@@ -145,9 +149,13 @@
             Agregar
           </button>
         {{else if .PageContext.UserAuthInfo.CanEdit "member"}}
-          <button class="btn btn-secondary" id="btn-edit" type="button">
+          <button class="btn btn-primary" id="btn-edit" type="button">
             <i data-lucide="pencil"></i>
             Editar
+          </button>
+          <button class="btn btn-outline-danger" id="btn-cancel" type="button" style="display:none;">
+            <i data-lucide="x"></i>
+            Cancelar
           </button>
           <button class="btn btn-primary" id="btn-save" type="submit" style="display:none;">
             <i data-lucide="save"></i>
@@ -175,40 +183,37 @@
   {{if and (ne .PageContext.Mode "add") (.PageContext.UserAuthInfo.CanEdit "member")}}
   var formInputs = document.querySelectorAll('#parent-form input, #parent-form select');
   var btnEdit = document.getElementById('btn-edit');
+  var btnCancel = document.getElementById('btn-cancel');
   var btnSave = document.getElementById('btn-save');
   var isEditing = false;
 
-  btnEdit.addEventListener('click', function() {
-    isEditing = !isEditing;
+  function setEditing(editing) {
+    isEditing = editing;
     document.getElementById('parent-form').classList.toggle('is-editing', isEditing);
-    if (isEditing) {
-      formInputs.forEach(function(input) {
-        if (input.tagName === 'SELECT') {
-          input.disabled = false;
-        } else {
-          input.removeAttribute('readonly');
-        }
-        input.classList.add('editable');
-      });
-      btnEdit.innerHTML = '<i data-lucide="x"></i> Cancelar';
-      btnSave.style.display = 'flex';
-    } else {
-      formInputs.forEach(function(input) {
-        if (input.tagName === 'SELECT') {
-          input.disabled = true;
-        } else {
-          input.setAttribute('readonly', 'readonly');
-        }
-        input.classList.remove('editable');
-      });
-      btnEdit.innerHTML = '<i data-lucide="pencil"></i> Editar';
-      btnSave.style.display = 'none';
+    formInputs.forEach(function(input) {
+      if (input.tagName === 'SELECT') {
+        input.disabled = !isEditing;
+      } else if (isEditing) {
+        input.removeAttribute('readonly');
+      } else {
+        input.setAttribute('readonly', 'readonly');
+      }
+      input.classList.toggle('editable', isEditing);
+    });
+    btnEdit.style.display = isEditing ? 'none' : 'flex';
+    if (btnCancel) btnCancel.style.display = isEditing ? 'flex' : 'none';
+    btnSave.style.display = isEditing ? 'flex' : 'none';
+    if (isEditing && window.initDateInputs) {
+      window.initDateInputs(document.getElementById('parent-form'));
     }
     lucide.createIcons();
-  });
+  }
+
+  btnEdit.addEventListener('click', function() { setEditing(true); });
+  if (btnCancel) btnCancel.addEventListener('click', function() { setEditing(false); });
 
   {{if .Errors}}
-  btnEdit.click();
+  setEditing(true);
   {{end}}
   {{end}}
 

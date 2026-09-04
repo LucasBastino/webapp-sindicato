@@ -10,8 +10,11 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
+  <script src="/static/scripts/mobile-actions-menu.js" defer></script>
 </head>
 
 <body>
@@ -47,20 +50,12 @@
 
     <div class="page-header affiliate-header">
       {{if eq .PageContext.Mode "add"}}
-      <h1>Agregar Afiliado</h1>
+      <h1>Agregar afiliado</h1>
       <p>Completá los datos para registrar un nuevo afiliado</p>
       {{else}}
       <h1>{{.Member.LastName}}, {{.Member.Name}}</h1>
-      <p>Vista completa de los datos del afiliado</p>
-      <div class="header-actions">
-        <button class="btn btn-secondary" type="button"
-                hx-get="/members"
-                hx-target="#main-content"
-                hx-push-url="true">
-          <i data-lucide="arrow-left"></i>
-          Tabla de afiliados
-        </button>
-        {{if and (not .Member.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "member")}}
+      {{if and (not .Member.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "member")}}
+      <div class="header-actions member-detail-header-actions">
         <button class="btn btn-secondary" id="btn-edit" type="button">
           <i data-lucide="pencil"></i>
           Editar
@@ -69,8 +64,8 @@
           <i data-lucide="save"></i>
           Guardar
         </button>
-        {{end}}
       </div>
+      {{end}}
       {{end}}
     </div>
 
@@ -94,7 +89,6 @@
             hx-target="#main-content"
             hx-swap="innerHTML"
             hx-on::before-request="this.querySelectorAll('select').forEach(function(s){ s.disabled = false; })">
-        <input type="hidden" id="company-id" name="company-id" value="{{.Member.CompanyID}}">
       {{end}}
 
         <!-- DATOS PERSONALES -->
@@ -131,7 +125,7 @@
               </div>
               <div class="form-group{{if index .Errors "birthday"}} input-invalid{{end}}">
                 <label>Fecha de Nacimiento <span class="required-marker">*</span></label>
-                <input type="text" id="birthday" name="birthday" value="{{.Member.Birthday}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" />
+                <input type="text" id="birthday" name="birthday" value="{{.Member.Birthday}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" data-date-input inputmode="numeric" autocomplete="off" maxlength="10" />
                 <p class="birthday-error field-error">{{with index .Errors "birthday"}}{{.}}{{end}}</p>
               </div>
               <div class="form-group{{if index .Errors "gender"}} input-invalid{{end}}">
@@ -224,23 +218,24 @@
               </div>
               <div class="form-group{{if index .Errors "entryDate"}} input-invalid{{end}}">
                 <label>Fecha de Ingreso</label>
-                <input type="text" id="entry-date" name="entry-date" value="{{.Member.EntryDate}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" />
+                <input type="text" id="entry-date" name="entry-date" value="{{.Member.EntryDate}}" {{if ne .PageContext.Mode "add"}}readonly{{end}} placeholder="DD/MM/AAAA" data-date-input inputmode="numeric" autocomplete="off" maxlength="10" />
                 <p class="entry-date-error field-error">{{with index .Errors "entryDate"}}{{.}}{{end}}</p>
               </div>
               <div class="form-group{{if index .Errors "companyID"}} input-invalid{{end}}">
                 <label>Empresa <span class="required-marker">*</span></label>
-                {{if eq .PageContext.Mode "add"}}
                 <select id="company-id" name="company-id"
                         hx-get="/companies?view=options"
                         hx-trigger="load"
                         hx-target="this"
                         hx-swap="innerHTML"
-                        data-selected="{{.Member.CompanyID}}">
+                        data-selected="{{.Member.CompanyID}}"
+                        {{if ne .PageContext.Mode "add"}}disabled{{end}}>
+                  {{if ne .Member.CompanyID 0}}
+                  <option value="{{.Member.CompanyID}}" selected>{{if .Member.CompanyName}}{{.Member.CompanyName}}{{else}}Cargando...{{end}}</option>
+                  {{else}}
                   <option value="">Cargando...</option>
+                  {{end}}
                 </select>
-                {{else}}
-                <input type="text" value="{{.Member.CompanyName}}" readonly />
-                {{end}}
                 <p class="company-id-error field-error">{{with index .Errors "companyID"}}{{.}}{{end}}</p>
               </div>
               <div class="form-group{{if index .Errors "category"}} input-invalid{{end}}">
@@ -308,6 +303,12 @@
             Guardar
           </button>
           {{end}}
+          {{if ne .PageContext.Mode "add"}}
+          <div class="entity-meta">
+            <i data-lucide="clock"></i>
+            <span>Creado: {{.Member.CreatedAt}} &bull; Actualizado: {{.Member.UpdatedAt}}</span>
+          </div>
+          {{end}}
         </div>
 
       </form>
@@ -317,9 +318,7 @@
 
       <aside class="affiliate-sidebar">
 
-        <!-- PROFILE CARD -->
-
-        <div class="card profile-card">
+        <div class="card profile-card member-data-card">
           <div class="profile-avatar">
             {{if and .Member.LastName .Member.Name}}
             {{slice .Member.LastName 0 1}}{{slice .Member.Name 0 1}}
@@ -328,46 +327,58 @@
             {{end}}
           </div>
           <h3>{{.Member.LastName}}, {{.Member.Name}}</h3>
-          <div class="profile-meta">
-            <span>N° Afiliado</span>
-            <strong>{{.Member.MemberNumber}}</strong>
-          </div>
-          <div class="status-divider"></div>
-          <div class="profile-meta">
-            <span>Empresa</span>
-            <strong>
-              {{.Member.CompanyName}}
-              <button class="company-link table-btn blue" type="button"
-                      hx-get="/companies/{{.Member.CompanyID}}"
-                      hx-target="#main-content"
-                      hx-push-url="true"
-                      title="Ver empresa">
-                <i data-lucide="external-link"></i>
-              </button>
-            </strong>
+          <div class="profile-meta-list">
+            <div class="profile-meta">
+              <span>N° Afiliado</span>
+              <strong>{{.Member.MemberNumber}}</strong>
+            </div>
+            <div class="profile-meta">
+              <span>DNI</span>
+              <strong>{{.Member.Dni}}</strong>
+            </div>
+            {{if .Member.Phone}}
+            <div class="profile-meta">
+              <span>Teléfono</span>
+              <strong>{{.Member.Phone}}</strong>
+            </div>
+            {{end}}
+            {{if ne .Member.CompanyID 0}}
+            <button type="button" class="profile-meta profile-meta--link"
+                    hx-get="/companies/{{.Member.CompanyID}}"
+                    hx-target="#main-content"
+                    hx-push-url="true"
+                    title="Ir a la ficha de la empresa">
+              <span>Empresa</span>
+              <strong>
+                <span class="profile-meta-link-value">
+                  <span class="profile-meta-value">{{.Member.CompanyName}}</span>
+                  <i data-lucide="external-link" class="profile-meta-link-icon" aria-hidden="true"></i>
+                </span>
+              </strong>
+            </button>
+            {{else}}
+            <div class="profile-meta">
+              <span>Empresa</span>
+              <strong>{{.Member.CompanyName}}</strong>
+            </div>
+            {{end}}
           </div>
         </div>
 
-        <!-- GESTIÓN -->
+        {{template "member-mobile-actions" .}}
 
-        <div class="card">
-          <h3>Gestión</h3>
-          <div class="action-item"
-               hx-get="/members/{{.Member.ID}}/parents"
-               hx-target="#main-content"
-               hx-push-url="true"
-               style="cursor:pointer;">
+        <div class="card company-actions-card member-sidebar-actions">
+          <button class="action-btn blue" type="button"
+                  hx-get="/members/{{.Member.ID}}/parents"
+                  hx-target="#main-content"
+                  hx-push-url="true">
             <i data-lucide="users"></i>
-            Ver familiares a cargo
-            <i data-lucide="chevron-right" style="margin-left:auto;"></i>
-          </div>
+            Familiares a cargo
+          </button>
         </div>
-
-        <!-- ACCIONES -->
 
         {{if .PageContext.UserAuthInfo.CanEdit "member"}}
-        <div class="card">
-          <h3>Acciones</h3>
+        <div class="card company-actions-card member-sidebar-actions">
           {{if .Member.IsDeleted}}
           <button class="action-btn green"
                   type="button"
@@ -420,13 +431,6 @@
     });
   });
 
-  {{if eq .PageContext.Mode "add"}}
-  document.body.addEventListener('htmx:configRequest', function(evt) {
-    if (evt.detail.verb === 'post') {
-      evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
-    }
-  });
-
   var companySelect = document.getElementById('company-id');
   if (companySelect) {
     companySelect.addEventListener('htmx:afterSwap', function() {
@@ -434,6 +438,13 @@
       if (selected && selected !== '0') this.value = selected;
     });
   }
+
+  {{if eq .PageContext.Mode "add"}}
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    if (evt.detail.verb === 'post') {
+      evt.detail.headers['Idempotency-Key'] = crypto.randomUUID();
+    }
+  });
   {{else if .PageContext.UserAuthInfo.CanEdit "member"}}
   var memberForm = document.getElementById('member-form');
   var isDeleted = memberForm && memberForm.dataset.isDeleted === 'true';
@@ -464,6 +475,9 @@
         if (btnSave) btnSave.style.display = isEditing ? 'flex' : 'none';
         if (btnSaveFooter) btnSaveFooter.style.display = isEditing ? 'flex' : 'none';
         if (btnCancelFooter) btnCancelFooter.style.display = isEditing ? 'flex' : 'none';
+        if (isEditing && window.initDateInputs) {
+          window.initDateInputs(memberForm);
+        }
         lucide.createIcons();
       });
 
@@ -476,10 +490,19 @@
       {{if .Errors}}
       btnEdit.click();
       {{end}}
+
+      var btnEditMobile = document.getElementById('btn-edit-mobile');
+      if (btnEditMobile) {
+        btnEditMobile.addEventListener('click', function(e) {
+          e.preventDefault();
+          btnEdit.click();
+        });
+      }
     }
   }
   {{end}}
 
+  if (window.initActionsDropdowns) window.initActionsDropdowns(document);
 </script>
 
 <script type="module">

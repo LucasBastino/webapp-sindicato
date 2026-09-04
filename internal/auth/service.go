@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	authdomain "github.com/LucasBastino/app-sindicato/internal/auth/domain"
-	authports "github.com/LucasBastino/app-sindicato/internal/auth/ports"
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/config"
-	"github.com/LucasBastino/app-sindicato/internal/features/user"
-	"github.com/LucasBastino/app-sindicato/internal/security/password"
+	authdomain "github.com/LucasBastino/webapp-sindicato/internal/auth/domain"
+	authports "github.com/LucasBastino/webapp-sindicato/internal/auth/ports"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/config"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/user"
+	"github.com/LucasBastino/webapp-sindicato/internal/security/password"
 )
 
 type AuthService struct {
@@ -23,6 +23,10 @@ type AuthService struct {
     
     cfg config.AuthConfig
 }
+
+// Precomputed bcrypt (cost 14) used when the username is missing so login
+// timing stays close to the "user exists, wrong password" path.
+var loginDummyPasswordHash = []byte("$2a$14$Sy2SjaW9pdiZ2kcP7EJSwOU3t8bssnq0mLhsgfepIhNopzUizHw62")
 
 func NewAuthService(repo *AuthRepository, userService *user.UserService, passwordHasher password.Hasher, tokenGenerator authports.TokenGenerator, cfg config.AuthConfig ) *AuthService{
 	return &AuthService{
@@ -41,17 +45,18 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 	}
 
     if user == nil{
-		return "", "", fmt.Errorf("%w", apperrors.ErrInvalidLoginUser)
+		_ = s.passwordHasher.Compare(loginDummyPasswordHash, password)
+		return "", "", fmt.Errorf("%w", apperrors.ErrInvalidLogin)
 	}
 
 	err = s.passwordHasher.Compare([]byte(user.PasswordHash), password)
     if err != nil {
-        return "", "", fmt.Errorf("%w", apperrors.ErrInvalidLoginPassword)
+        return "", "", fmt.Errorf("%w", apperrors.ErrInvalidLogin)
 	}
 
 	claims := authdomain.AuthClaims{
 		Sub:           user.ID,
-		Exp:           time.Now().Add(time.Minute * 5),
+		Exp:           time.Now().Add(s.cfg.AccessTokenTTL),
 		Iat:           time.Now(),
 		Username:      user.Username,
 		Admin:         user.Admin,
@@ -116,35 +121,56 @@ func (s *AuthService) RevokeRefreshToken(ctx context.Context, tokenHash string) 
     return nil
 }
 
-func (s *AuthService) RefreshAccessToken(ctx context.Context, rawRefreshToken string) (string, *authdomain.AuthClaims, error) {
-    // 1. hasheas el token
+func (s *AuthService) RevokeAllSessionsForUser(ctx context.Context, userID int) error {
+	if err := s.repo.RevokeAllRefreshTokensForUser(ctx, userID); err != nil {
+		return apperrors.NewDatabaseError(err, "")
+	}
+	return nil
+}
+
+func (s *AuthService) RevokeOtherSessionsForUser(ctx context.Context, userID int, rawRefreshToken string) error {
+	exceptHash := hashToken(rawRefreshToken)
+	if err := s.repo.RevokeAllRefreshTokensForUserExcept(ctx, userID, exceptHash); err != nil {
+		return apperrors.NewDatabaseError(err, "")
+	}
+	return nil
+}
+
+func (s *AuthService) RefreshAccessToken(ctx context.Context, rawRefreshToken string) (string, string, *authdomain.AuthClaims, error) {
     hash := hashToken(rawRefreshToken)
-    
-    // 2. buscas en DB
+
     refreshToken, err := s.repo.GetRefreshToken(ctx, hash)
     if err != nil {
-        return "", nil, apperrors.NewDatabaseError(fmt.Errorf("failed to fetch refresh token: %w", err), "")
+        return "", "", nil, apperrors.NewDatabaseError(fmt.Errorf("failed to fetch refresh token: %w", err), "")
     }
 
     if refreshToken == nil{
-        return "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token not found"), "")
+        return "", "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token not found"), "")
     }
-    
-    // 3. validás
+
     if refreshToken.RevokedAt != nil {
-        return "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token revoked"), "Sesión inválida.")
+		// Possible reuse of a rotated token: invalidate all sessions for that user.
+		_ = s.repo.RevokeAllRefreshTokensForUser(ctx, refreshToken.UserID)
+        return "", "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token revoked"), "Sesión inválida.")
     }
     if refreshToken.ExpiresAt.Before(time.Now()) {
-        return "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token expired"), "Sesión expirada.")
+        return "", "", nil, apperrors.NewUnauthorizedError(errors.New("refresh token expired"), "Sesión expirada.")
     }
-    
-    // 4. buscás el user para obtener permisos frescos
+
     user, err := s.userService.Get(ctx, refreshToken.UserID)
     if err != nil {
-        return "", nil, err
+        return "", "", nil, err
     }
-    
-    // 5. generás nuevo access token
+
+	if err := s.repo.RevokeRefreshToken(ctx, hash); err != nil {
+		return "", "", nil, apperrors.NewDatabaseError(err, "")
+	}
+
+	newRefreshToken, err := s.CreateRefreshToken(ctx, refreshToken.UserID)
+	if err != nil {
+		return "", "", nil, err
+	}
+
     claims := authdomain.AuthClaims{
         Sub:            refreshToken.UserID,
         Exp:            time.Now().Add(s.cfg.AccessTokenTTL),
@@ -153,13 +179,13 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, rawRefreshToken st
         Admin:          user.Admin,
         ResourceRoles:  user.ResourceRoles,
     }
-    
+
     accessToken, err := s.tokenGenerator.Create(s.cfg.JWTSecret, claims)
     if err != nil {
-        return "", nil, apperrors.NewInternalError(err, "")
+        return "", "", nil, apperrors.NewInternalError(err, "")
     }
-    
-    return accessToken, &claims, nil
+
+    return accessToken, newRefreshToken, &claims, nil
 }
 
 func (s *AuthService) Register(ctx context.Context, user user.User, password string, idempotencyKey string) (int, error) {

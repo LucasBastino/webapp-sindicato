@@ -1,0 +1,61 @@
+{{define "member-mobile-actions"}}
+<div class="member-ficha-mobile-actions">
+  <div class="actions-dropdown" id="member-actions-dropdown">
+    <button type="button"
+            class="btn btn-outline actions-trigger"
+            id="member-actions-toggle"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-controls="member-actions-menu">
+      Acciones
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div class="actions-menu" id="member-actions-menu" role="menu">
+      <button type="button" role="menuitem"
+              hx-get="/members/{{.Member.ID}}/parents"
+              hx-target="#main-content"
+              hx-push-url="true">
+        <i data-lucide="users"></i>
+        Familiares a cargo
+      </button>
+      {{if and (not .Member.IsDeleted) (.PageContext.UserAuthInfo.CanEdit "member")}}
+      <button type="button" role="menuitem" id="btn-edit-mobile" data-action="edit-member">
+        <i data-lucide="pencil"></i>
+        Editar
+      </button>
+      {{end}}
+      {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+      <div class="actions-menu-separator" role="separator"></div>
+      {{if .Member.IsDeleted}}
+      <button type="button" role="menuitem" class="success"
+              hx-post="/members/{{.Member.ID}}/restore"
+              hx-headers='{"view": "page"}'
+              hx-confirm="¿Estás seguro de restaurar este afiliado?"
+              hx-target="#main-content"
+              hx-swap="innerHTML">
+        <i data-lucide="rotate-ccw"></i>
+        Restaurar afiliado
+      </button>
+      <button type="button" role="menuitem" class="danger"
+              hx-delete="/members/{{.Member.ID}}/permanent"
+              hx-confirm="¿Estás seguro de eliminar permanentemente este afiliado? Esta acción no se puede deshacer."
+              hx-target="#main-content"
+              hx-push-url="/members">
+        <i data-lucide="trash-2"></i>
+        Eliminar permanentemente
+      </button>
+      {{else}}
+      <button type="button" role="menuitem" class="danger"
+              hx-delete="/members/{{.Member.ID}}"
+              hx-confirm="¿Estás seguro de eliminar este afiliado?"
+              hx-target="#main-content"
+              hx-push-url="/members">
+        <i data-lucide="trash-2"></i>
+        Eliminar afiliado
+      </button>
+      {{end}}
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}

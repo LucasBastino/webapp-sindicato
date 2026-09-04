@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LucasBastino/app-sindicato/internal/common/apperrors"
-	"github.com/LucasBastino/app-sindicato/internal/common/page"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/apperrors"
+	"github.com/LucasBastino/webapp-sindicato/internal/common/page"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
 )
 
 type MemberService struct {
@@ -87,6 +87,9 @@ func (s *MemberService) Create(ctx context.Context, member Member, idempotencyKe
 	if err!=nil{
 		return 0, apperrors.NewDatabaseError(err, "")
 	}
+	if id == 0 {
+		return 0, apperrors.NewBusinessError(errors.New("cannot create member: company is inactive or does not exist"), "La empresa no se encuentra activa.")
+	}
 
 	if err := s.idempotency.UpdateResource(ctx, tx, idempotencyKey, "member", id); err != nil {
 		return 0, err
@@ -99,8 +102,6 @@ func (s *MemberService) Create(ctx context.Context, member Member, idempotencyKe
 	return id, nil
 }
 
-// edita el afiliado
-// condicion: no puede ser editado si esta inactivo
 func (s *MemberService) Update(ctx context.Context, id int, member Member) error {
 	err := s.repo.Update(ctx, id, member)
 	if err!=nil{
@@ -116,7 +117,7 @@ func (s *MemberService) SoftDelete(ctx context.Context, id int) error {
 		return apperrors.NewDatabaseError(err, "")
 	}
 	if rows == 0 {
-		return apperrors.NewBusinessError(errors.New("failed to softdelete member: the entity is already softdeleted or doesn't exist"), "El afiliado ya se encuentra eliminado o no existe.")
+		return apperrors.NewBusinessError(errors.New("failed to softdelete member: the entity is already softdeleted or doesn't exist"), "No se pudo completar la operación.")
 	}
 	return nil
 }
@@ -127,7 +128,7 @@ func (s *MemberService) Restore(ctx context.Context, id int) error {
 		return apperrors.NewDatabaseError(err, "")
 	}
 	if rows == 0{
-		return apperrors.NewBusinessError(errors.New("failed to restore member: the entity is already active or doesn't exist"), "El afiliado ya se encuentra activo o no existe.")
+		return apperrors.NewBusinessError(errors.New("failed to restore member: the entity is already active or doesn't exist"), "No se pudo completar la operación.")
 	}
 	return nil
 }

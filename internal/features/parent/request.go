@@ -3,7 +3,7 @@ package parent
 import (
 	"strings"
 
-	v "github.com/LucasBastino/app-sindicato/internal/validation"
+	v "github.com/LucasBastino/webapp-sindicato/internal/validation"
 )
 
 // recordar que los campos tiene que ser exportados para que el body parser los lea
@@ -38,13 +38,13 @@ func (req request) validate() map[string]string {
 	if err := v.ValidateNameOrLastName(req.LastName); err != "" {
 		errorMap["lastName"] = err
 	}
-	if err := v.ValidateRelationship(req.Relationship); err != "" {
+	if err := v.ValidateOptionalRelationship(req.Relationship); err != "" {
 		errorMap["relationship"] = err
 	}
-	if err := v.ValidateBirthday(req.Birthday); err != "" {
+	if err := v.ValidateOptionalBirthday(req.Birthday); err != "" {
 		errorMap["birthday"] = err
 	}
-	if err := v.ValidateGender(req.Gender); err != "" {
+	if err := v.ValidateOptionalGender(req.Gender); err != "" {
 		errorMap["gender"] = err
 	}
 	if err := v.ValidateCuilCuit(req.Cuil); err != "" {

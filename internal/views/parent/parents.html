@@ -10,8 +10,11 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
+  <script src="/static/scripts/mobile-actions-menu.js" defer></script>
 </head>
 
 <body>
@@ -39,17 +42,12 @@
 {{define "parents-content"}}
 
 <div class="page-header affiliate-header">
-  <h1 class="title-sm">Familiares de {{if .MemberName}}{{.MemberName}}{{else}}el afiliado{{end}}</h1>
-  <div class="header-actions">
-    <button class="btn btn-secondary" type="button"
-            hx-get="/members/{{.MemberID}}"
-            hx-target="#main-content"
-            hx-push-url="true">
-      <i data-lucide="arrow-left"></i>
-      Ficha del afiliado
-    </button>
-    {{if ne (len .Parents) 0}}
-    {{if .PageContext.UserAuthInfo.CanEdit "member"}}
+  <h1 class="title-sm">
+    <span class="parents-title-mobile">Familiares del afiliado</span>
+    <span class="parents-title-desktop">Familiares de {{if .MemberName}}{{.MemberName}}{{else}}el afiliado{{end}}</span>
+  </h1>
+  {{if and (.PageContext.UserAuthInfo.CanEdit "member") (gt (len .Parents) 0)}}
+  <div class="header-actions parents-header-actions">
     <button class="btn btn-primary" type="button"
             hx-get="/members/{{.MemberID}}/parents/new"
             hx-target="#main-content"
@@ -57,69 +55,226 @@
       <i data-lucide="plus"></i>
       Agregar familiar
     </button>
-    {{end}}
-    {{end}}
-  </div>
-</div>
-
-<div id="parent-modal-container"></div>
-
-<div class="card table-card">
-  {{if eq (len .Parents) 0}}
-    {{template "empty-state" .EmptyState}}
-  {{else}}
-  <div class="table-wrapper">
-    <table class="affiliate-table">
-      <thead>
-        <tr>
-          <th>Familiar</th>
-          <th class="col-center">Parentesco</th>
-          <th class="col-cuil-parent">CUIL</th>
-          <th class="col-center">Fecha de nacimiento</th>
-          <th>Ficha</th>
-          {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
-          <th>Eliminar</th>
-          {{end}}
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Parents}}
-        <tr>
-          <td class="col-name">{{.LastName}}, {{.Name}}</td>
-          <td class="col-center">{{.Relationship}}</td>
-          <td class="col-cuil-parent">{{.Cuil}}</td>
-          <td class="col-center">{{.Birthday}}</td>
-          <td class="col-action">
-            <button class="table-btn blue" type="button"
-                    hx-get="/parents/{{.ID}}"
-                    hx-target="#parent-modal-container"
-                    hx-swap="innerHTML"
-                    title="Ver ficha">
-              <i data-lucide="file-text"></i>
-            </button>
-          </td>
-          {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
-          <td class="col-action">
-            <button class="table-btn red" type="button"
-                    hx-delete="/parents/{{.ID}}/permanent"
-                    hx-confirm="¿Estás seguro de eliminar este familiar? Esta acción no se puede deshacer."
-                    hx-target="#main-content"
-                    hx-push-url="true"
-                    title="Eliminar familiar">
-              <i data-lucide="trash-2"></i>
-            </button>
-          </td>
-          {{end}}
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
   </div>
   {{end}}
 </div>
 
+<div id="parent-modal-container"></div>
+
+<div class="affiliate-grid">
+  <div class="affiliate-main">
+    {{if and (.PageContext.UserAuthInfo.CanEdit "member") (gt (len .Parents) 0)}}
+    <div class="mobile-list-toolbar parents-mobile-add">
+      <button class="btn btn-primary" type="button"
+              hx-get="/members/{{.MemberID}}/parents/new"
+              hx-target="#main-content"
+              hx-push-url="true">
+        <i data-lucide="plus"></i>
+        Agregar nuevo familiar
+      </button>
+    </div>
+    {{end}}
+    <div class="card table-card">
+      {{if eq (len .Parents) 0}}
+        {{template "empty-state" .EmptyState}}
+      {{else}}
+      <div class="table-wrapper">
+        <table class="affiliate-table">
+          <thead>
+            <tr>
+              <th>Familiar</th>
+              <th class="col-center">Parentesco</th>
+              <th class="col-cuil-parent">CUIL</th>
+              <th class="col-center">Fecha de nacimiento</th>
+              <th>Ficha</th>
+              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+              <th>Eliminar</th>
+              {{end}}
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Parents}}
+            <tr>
+              <td class="col-name">{{.LastName}}, {{.Name}}</td>
+              <td class="col-center">{{.Relationship}}</td>
+              <td class="col-cuil-parent">{{.Cuil}}</td>
+              <td class="col-center">{{.Birthday}}</td>
+              <td class="col-action">
+                <button class="table-btn blue" type="button"
+                        hx-get="/parents/{{.ID}}"
+                        hx-target="#parent-modal-container"
+                        hx-swap="innerHTML"
+                        title="Ver ficha">
+                  <i data-lucide="file-text"></i>
+                </button>
+              </td>
+              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+              <td class="col-action">
+                <button class="table-btn red" type="button"
+                        hx-delete="/parents/{{.ID}}/permanent"
+                        hx-confirm="¿Estás seguro de eliminar este familiar? Esta acción no se puede deshacer."
+                        hx-target="#main-content"
+                        hx-push-url="true"
+                        title="Eliminar familiar">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </td>
+              {{end}}
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-cards">
+        {{range .Parents}}
+        <article class="mobile-card mobile-card--clickable"
+                 hx-get="/parents/{{.ID}}"
+                 hx-target="#parent-modal-container"
+                 hx-swap="innerHTML">
+          <div class="mobile-card-title">{{.LastName}}, {{.Name}}</div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-fields">
+              {{if .Relationship}}
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Parentesco</span>
+                <span class="mobile-card-value">{{.Relationship}}</span>
+              </div>
+              {{end}}
+              {{if .Cuil}}
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">CUIL</span>
+                <span class="mobile-card-value">{{.Cuil}}</span>
+              </div>
+              {{end}}
+              {{if .Birthday}}
+              <div class="mobile-card-row">
+                <span class="mobile-card-label">Nacimiento</span>
+                <span class="mobile-card-value">{{.Birthday}}</span>
+              </div>
+              {{end}}
+            </div>
+            <div class="mobile-card-actions" onclick="event.stopPropagation()">
+              <button class="table-btn blue" type="button"
+                      hx-get="/parents/{{.ID}}"
+                      hx-target="#parent-modal-container"
+                      hx-swap="innerHTML"
+                      title="Ver ficha">
+                <i data-lucide="file-text"></i>
+              </button>
+              {{if $.PageContext.UserAuthInfo.CanEdit "member"}}
+              <button class="table-btn red" type="button"
+                      hx-delete="/parents/{{.ID}}/permanent"
+                      hx-confirm="¿Estás seguro de eliminar este familiar? Esta acción no se puede deshacer."
+                      hx-target="#main-content"
+                      hx-push-url="true"
+                      title="Eliminar familiar">
+                <i data-lucide="trash-2"></i>
+              </button>
+              {{end}}
+            </div>
+          </div>
+        </article>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <aside class="affiliate-sidebar">
+    <div class="card profile-card member-data-card">
+      <div class="profile-avatar">
+        {{if and .Member.LastName .Member.Name}}
+        {{slice .Member.LastName 0 1}}{{slice .Member.Name 0 1}}
+        {{else}}
+        <i data-lucide="user"></i>
+        {{end}}
+      </div>
+      <h3>{{.Member.LastName}}, {{.Member.Name}}</h3>
+      <div class="profile-meta-list">
+        <div class="profile-meta">
+          <span>N° Afiliado</span>
+          <strong>{{.Member.MemberNumber}}</strong>
+        </div>
+        <div class="profile-meta">
+          <span>DNI</span>
+          <strong>{{.Member.Dni}}</strong>
+        </div>
+        {{if .Member.Phone}}
+        <div class="profile-meta">
+          <span>Teléfono</span>
+          <strong>{{.Member.Phone}}</strong>
+        </div>
+        {{end}}
+        {{if ne .Member.CompanyID 0}}
+        <button type="button" class="profile-meta profile-meta--link"
+                hx-get="/companies/{{.Member.CompanyID}}"
+                hx-target="#main-content"
+                hx-push-url="true"
+                title="Ir a la ficha de la empresa">
+          <span>Empresa</span>
+          <strong>
+            <span class="profile-meta-link-value">
+              <span class="profile-meta-value">{{.Member.CompanyName}}</span>
+              <i data-lucide="external-link" class="profile-meta-link-icon" aria-hidden="true"></i>
+            </span>
+          </strong>
+        </button>
+        {{else}}
+        <div class="profile-meta">
+          <span>Empresa</span>
+          <strong>{{.Member.CompanyName}}</strong>
+        </div>
+        {{end}}
+      </div>
+    </div>
+
+    {{/* Acciones mobile: debajo de la card del afiliado */}}
+    <div class="parents-mobile-bar">
+      <div class="actions-dropdown" id="parents-page-actions-dropdown">
+        <button type="button"
+                class="btn btn-outline actions-trigger"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="parents-page-actions-menu">
+          Acciones
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <div class="actions-menu" id="parents-page-actions-menu" role="menu">
+          <button type="button" role="menuitem"
+                  hx-get="/members/{{.Member.ID}}"
+                  hx-target="#main-content"
+                  hx-push-url="true">
+            <i data-lucide="user"></i>
+            Ficha del afiliado
+          </button>
+          {{if and ($.PageContext.UserAuthInfo.CanEdit "member") (gt (len $.Parents) 0)}}
+          <button type="button" role="menuitem"
+                  hx-get="/members/{{.MemberID}}/parents/new"
+                  hx-target="#main-content"
+                  hx-push-url="true">
+            <i data-lucide="plus"></i>
+            Agregar familiar
+          </button>
+          {{end}}
+        </div>
+      </div>
+    </div>
+
+    <div class="card company-actions-card parents-sidebar-actions">
+      <button class="action-btn blue" type="button"
+              hx-get="/members/{{.Member.ID}}"
+              hx-target="#main-content"
+              hx-push-url="true">
+        <i data-lucide="user"></i>
+        Ficha del afiliado
+      </button>
+    </div>
+  </aside>
+</div>
+
 <script>
   lucide.createIcons();
+  if (window.initActionsDropdowns) window.initActionsDropdowns(document);
 </script>
 
 {{end}}

@@ -1,9 +1,7 @@
 package user
 
 type Response struct {
-	Username        string
-	Password        string
-	ConfirmPassword string
+	Username string
 
 	Admin         bool
 	ResourceRoles map[string]any
@@ -15,12 +13,6 @@ func (r Response) Role(resource string) string {
 	}
 	v, _ := r.ResourceRoles[resource].(string)
 	return v
-}
-
-type passwordResponse struct {
-	CurrentPassword string
-	Password        string
-	ConfirmPassword string
 }
 
 type permissionsResponse struct {

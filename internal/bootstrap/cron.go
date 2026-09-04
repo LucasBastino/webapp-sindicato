@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/LucasBastino/app-sindicato/internal/backup"
-	"github.com/LucasBastino/app-sindicato/internal/features/payment"
-	"github.com/LucasBastino/app-sindicato/internal/infra/idempotency"
-	"github.com/LucasBastino/app-sindicato/internal/infra/logger"
+	"github.com/LucasBastino/webapp-sindicato/internal/backup"
+	"github.com/LucasBastino/webapp-sindicato/internal/features/payment"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/idempotency"
+	"github.com/LucasBastino/webapp-sindicato/internal/infra/logger"
 	"github.com/robfig/cron/v3"
 )
 

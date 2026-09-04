@@ -10,8 +10,10 @@
 
   <link rel="stylesheet" href="/static/css/styles.css">
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/scripts/csrf.js" defer></script>
+  <script src="/static/scripts/error-modal.js" defer></script>
 </head>
 
 <body>
@@ -46,7 +48,7 @@
            hx-get="/members?view=electoral_list"
            hx-target="#main-content"
            hx-push-url="true">
-        <div class="stat-icon orange">
+        <div class="stat-icon blue">
           <i data-lucide="clipboard-list"></i>
         </div>
         <div class="stat-content">
@@ -66,8 +68,8 @@
           <i data-lucide="alert-triangle"></i>
         </div>
         <div class="stat-content">
-          <h3>Pagos vencidos</h3>
-          <p>Pagos pendientes cuya fecha de vencimiento ya pasó, agrupados por empresa.</p>
+          <h3>Aportes vencidos</h3>
+          <p>Aportes vencidos agrupados por empresa.</p>
         </div>
         <i data-lucide="chevron-right" class="report-option-chevron"></i>
       </div>
@@ -81,7 +83,7 @@
         </div>
         <div class="stat-content">
           <h3>Planes de pago</h3>
-          <p>Todos los planes de pago agrupados por empresa.</p>
+          <p>Planes de pago pendientes agrupados por empresa.</p>
         </div>
         <i data-lucide="chevron-right" class="report-option-chevron"></i>
       </div>
